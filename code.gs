@@ -657,33 +657,51 @@ function getStatistikPage8(tahun, tglMulai, tglAkhir) {
     if(!isNaN(lamaNum)&&lamaNum>0) lamaList.push(lamaNum);
   });
 
-  // Diagnosis (A=tanggal, B=diagnosis)
-  var diagYearMap={}, diagRangeMap={};
-  try {
-    var wsDiag = ss.getSheetByName('Diagnosis');
-    if(wsDiag && wsDiag.getLastRow()>1){
-      wsDiag.getRange(2,1,wsDiag.getLastRow()-1,2).getValues().forEach(function(r){
-        var tgl=toYMD(r[0]); var diag=String(r[1]||'').trim();
-        if(!tgl||!diag) return;
-        if(tgl.substring(0,4)===tahunStr) diagYearMap[diag]=(diagYearMap[diag]||0)+1;
-        if((!tglMulai||tgl>=tglMulai)&&(!tglAkhir||tgl<=tglAkhir)) diagRangeMap[diag]=(diagRangeMap[diag]||0)+1;
-      });
+  // §8 — Diagnosis & Alat Medik dibaca dari sheet PIVOT (agregasi bulanan,
+  // semantik "1 pasien 1 hitungan"). Pivot bersifat bulanan, jadi:
+  //   - Tahun  : jumlahkan semua bulan yyyy-MM yang tahunnya = tahun terpilih
+  //   - Rentang: jumlahkan bulan yang yyyy-MM-nya berada dalam rentang (granular per bulan)
+  // Baris TOTAL pada Pivot di-skip agar tidak dobel.
+  function bacaPivot(namaSheet) {
+    var out = {yearMap:{}, rangeMap:{}};
+    var sh = ss.getSheetByName(namaSheet);
+    if(!sh || sh.getLastRow()<2) return out;
+    var all = sh.getRange(1,1,sh.getLastRow(),sh.getLastColumn()).getValues();
+    var header = all[0];
+    var tmM = tglMulai ? String(tglMulai).substring(0,7) : '';
+    var taM = tglAkhir ? String(tglAkhir).substring(0,7) : '';
+    for(var rr=1; rr<all.length; rr++) {
+      var row = all[rr];
+      var b = row[0];
+      if(b===null || b==='') continue;
+      var mStr;
+      if(b instanceof Date) { mStr = Utilities.formatDate(b, tz, 'yyyy-MM'); }
+      else {
+        var s = String(b);
+        if(s.toUpperCase()==='TOTAL') continue; // skip baris TOTAL
+        mStr = s.substring(0,7);
+      }
+      if(mStr.length<7) continue;
+      var inYear  = (mStr.substring(0,4)===tahunStr);
+      var inRange = (!tmM || mStr>=tmM) && (!taM || mStr<=taM);
+      if(!inYear && !inRange) continue;
+      for(var c=1; c<header.length; c++) {
+        var raw = String(header[c]||'').trim();
+        if(!raw) continue;
+        var nama = (raw.indexOf('|')>=0) ? raw.split('|')[1] : raw; // alias "id|label" → label
+        var v = Number(row[c])||0;
+        if(v<=0) continue;
+        if(inYear)  out.yearMap[nama]  = (out.yearMap[nama]||0)  + v;
+        if(inRange) out.rangeMap[nama] = (out.rangeMap[nama]||0) + v;
+      }
     }
-  } catch(e) {}
+    return out;
+  }
 
-  // Alat Medik (A=tanggal, C=alat)
-  var alatYearMap={}, alatRangeMap={};
-  try {
-    var wsAlat = ss.getSheetByName('Alat Medik');
-    if(wsAlat && wsAlat.getLastRow()>1){
-      wsAlat.getRange(2,1,wsAlat.getLastRow()-1,3).getValues().forEach(function(r){
-        var tgl=toYMD(r[0]); var alat=String(r[2]||'').trim();
-        if(!tgl||!alat) return;
-        if(tgl.substring(0,4)===tahunStr) alatYearMap[alat]=(alatYearMap[alat]||0)+1;
-        if((!tglMulai||tgl>=tglMulai)&&(!tglAkhir||tgl<=tglAkhir)) alatRangeMap[alat]=(alatRangeMap[alat]||0)+1;
-      });
-    }
-  } catch(e) {}
+  var pvDiag = bacaPivot('Pivot Diagnosis');
+  var diagYearMap = pvDiag.yearMap, diagRangeMap = pvDiag.rangeMap;
+  var pvAlat = bacaPivot('Pivot Alat Medik');
+  var alatYearMap = pvAlat.yearMap, alatRangeMap = pvAlat.rangeMap;
 
   function stats(arr){
     if(!arr.length) return{avg:0,max:0,min:0,n:0};
