@@ -443,6 +443,30 @@ function getNomorBaruDanDataPasien(namaPasien, shift) {
   return JSON.stringify({nomorBaru:n, dataPasien:b||null, shift:shift});
 }
 
+// Daftar nama pasien hari ini (dari ws2 kolom B) — untuk dropdown Page5.
+function getPasienHariIniNames() {
+  var out = [];
+  try {
+    var lr = ws2.getLastRow();
+    if(lr >= 2) {
+      ws2.getRange(2,2,lr-1,1).getValues().forEach(function(r){
+        var n = String(r[0]||'').trim();
+        if(n && out.indexOf(n) < 0) out.push(n);
+      });
+    }
+  } catch(e) {}
+  return JSON.stringify(out);
+}
+
+// Cari laporan berdasarkan kombinasi tanggal+nama+shift. Kembalikan baris (JSON array) atau ''.
+function getLaporanByTNS(nama, tanggal, shift) {
+  var dup = cekDuplikatLaporan(nama, tanggal, shift);
+  if(dup.count < 1) return '';
+  var baris = _cariRowByNomor_(dup.nomor);
+  if(baris < 0) return '';
+  return JSON.stringify(ws1.getRange(baris,1,1,17).getValues());
+}
+
 // §5 — Penyimpanan aman. WAJIB: LockService + cek duplikat server + nomor server.
 // Selalu kembalikan JSON string. Bersihkan cache p1_data/init_data.
 function simpandisheet(ui) {
@@ -604,7 +628,7 @@ function getDaftarDinas(tglMulai, tglAkhir) {
 //  Merge ada di workbook yang sama — tidak perlu openById
 // ═══════════════════════════════════════════════════════
 function getStatistikPage8(tahun, tglMulai, tglAkhir) {
-  var cacheKey = 'stat8_'+tahun+'_'+(tglMulai||'')+'_'+(tglAkhir||'');
+  var cacheKey = 'stat8v2_'+tahun+'_'+(tglMulai||'')+'_'+(tglAkhir||'');
   var cache = CacheService.getScriptCache();
   var hit = cache.get(cacheKey);
   if(hit) return hit;
@@ -657,51 +681,64 @@ function getStatistikPage8(tahun, tglMulai, tglAkhir) {
     if(!isNaN(lamaNum)&&lamaNum>0) lamaList.push(lamaNum);
   });
 
-  // §8 — Diagnosis & Alat Medik dibaca dari sheet PIVOT (agregasi bulanan,
-  // semantik "1 pasien 1 hitungan"). Pivot bersifat bulanan, jadi:
-  //   - Tahun  : jumlahkan semua bulan yyyy-MM yang tahunnya = tahun terpilih
-  //   - Rentang: jumlahkan bulan yang yyyy-MM-nya berada dalam rentang (granular per bulan)
-  // Baris TOTAL pada Pivot di-skip agar tidak dobel.
-  function bacaPivot(namaSheet) {
-    var out = {yearMap:{}, rangeMap:{}};
-    var sh = ss.getSheetByName(namaSheet);
-    if(!sh || sh.getLastRow()<2) return out;
-    var all = sh.getRange(1,1,sh.getLastRow(),sh.getLastColumn()).getValues();
-    var header = all[0];
-    var tmM = tglMulai ? String(tglMulai).substring(0,7) : '';
-    var taM = tglAkhir ? String(tglAkhir).substring(0,7) : '';
-    for(var rr=1; rr<all.length; rr++) {
-      var row = all[rr];
-      var b = row[0];
-      if(b===null || b==='') continue;
-      var mStr;
-      if(b instanceof Date) { mStr = Utilities.formatDate(b, tz, 'yyyy-MM'); }
-      else {
-        var s = String(b);
-        if(s.toUpperCase()==='TOTAL') continue; // skip baris TOTAL
-        mStr = s.substring(0,7);
-      }
-      if(mStr.length<7) continue;
-      var inYear  = (mStr.substring(0,4)===tahunStr);
-      var inRange = (!tmM || mStr>=tmM) && (!taM || mStr<=taM);
-      if(!inYear && !inRange) continue;
-      for(var c=1; c<header.length; c++) {
-        var raw = String(header[c]||'').trim();
-        if(!raw) continue;
-        var nama = (raw.indexOf('|')>=0) ? raw.split('|')[1] : raw; // alias "id|label" → label
-        var v = Number(row[c])||0;
-        if(v<=0) continue;
-        if(inYear)  out.yearMap[nama]  = (out.yearMap[nama]||0)  + v;
-        if(inRange) out.rangeMap[nama] = (out.rangeMap[nama]||0) + v;
-      }
-    }
-    return out;
+  // §8 — Diagnosis & Alat Medik dihitung LANGSUNG dari ws1 (Laporan) dengan
+  // semantik "1 pasien 1 hitungan": ambil 1 baris per pasien (kemunculan paling
+  // awal berdasarkan tanggal kolom B). Tanggal pakai kolom B → filter date-precise
+  // (tahun & rentang). Tidak bergantung pada sheet Pivot.
+  function toYMDflex(v){
+    if(!v) return '';
+    if(v instanceof Date){ try{return Utilities.formatDate(v,tz,'yyyy-MM-dd');}catch(e){return'';} }
+    var s = String(v);
+    if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0,10);
+    try{ var d=new Date(s); if(!isNaN(d.getTime())) return Utilities.formatDate(d,tz,'yyyy-MM-dd'); }catch(e){}
+    return '';
   }
-
-  var pvDiag = bacaPivot('Pivot Diagnosis');
-  var diagYearMap = pvDiag.yearMap, diagRangeMap = pvDiag.rangeMap;
-  var pvAlat = bacaPivot('Pivot Alat Medik');
-  var alatYearMap = pvAlat.yearMap, alatRangeMap = pvAlat.rangeMap;
+  var diagYearMap={}, diagRangeMap={}, alatYearMap={}, alatRangeMap={};
+  (function(){
+    var lr = ws1.getLastRow();
+    if(lr < 2) return;
+    var raw = ws1.getRange(2,1,lr-1,17).getValues(); // A..Q (B=tgl,E=nama,G=diag,I=alat)
+    // 1 baris per pasien = kemunculan paling awal (tanggal terkecil; ties → baris pertama)
+    var firstByPasien = {};
+    raw.forEach(function(r){
+      if(!r[0]) return;
+      var nama = String(r[4]||'').toLowerCase().trim();
+      if(!nama) return;
+      var tgl = toYMDflex(r[1]);
+      if(!tgl) return;
+      var prev = firstByPasien[nama];
+      if(!prev || tgl < prev.tgl){
+        firstByPasien[nama] = {tgl:tgl, diag:String(r[6]||''), alat:String(r[8]||'')};
+      }
+    });
+    Object.keys(firstByPasien).forEach(function(nm){
+      var o = firstByPasien[nm];
+      var inYear  = (o.tgl.substring(0,4) === tahunStr);
+      var inRange = (!tglMulai || o.tgl >= tglMulai) && (!tglAkhir || o.tgl <= tglAkhir);
+      if(!inYear && !inRange) return;
+      // diagnosis: bersihkan seperti kolom R (lowercase, sisakan huruf/angka/; /spasi)
+      var diagText = o.diag.toLowerCase().replace(/[^a-z0-9; ]/g,' ');
+      DIAGNOSIS_LIST.forEach(function(d){
+        if(diagText.indexOf(d) >= 0){
+          if(inYear)  diagYearMap[d]  = (diagYearMap[d]||0)  + 1;
+          if(inRange) diagRangeMap[d] = (diagRangeMap[d]||0) + 1;
+        }
+      });
+      // alat medik: kolom I dipisah ; atau ,
+      var alatArr = String(o.alat).split(/[;,]/).map(function(a){return a.trim().toLowerCase();});
+      ALAT_LIST.forEach(function(a){
+        var disp    = (a.indexOf('|')>=0) ? a.split('|')[1] : a;
+        var aliases = a.toLowerCase().split('|');
+        for(var k=0;k<aliases.length;k++){
+          if(alatArr.indexOf(aliases[k]) >= 0){
+            if(inYear)  alatYearMap[disp]  = (alatYearMap[disp]||0)  + 1;
+            if(inRange) alatRangeMap[disp] = (alatRangeMap[disp]||0) + 1;
+            break;
+          }
+        }
+      });
+    });
+  })();
 
   function stats(arr){
     if(!arr.length) return{avg:0,max:0,min:0,n:0};

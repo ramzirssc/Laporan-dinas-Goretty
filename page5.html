@@ -1,27 +1,22 @@
 <!-- PAGE 5: TULIS LAPORAN -->
 <style>
- .p5h{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
+ .p5h{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;
    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);
    padding:13px 18px;margin-bottom:12px;box-shadow:var(--shadow);position:relative;overflow:hidden}
  .p5h::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;
    background:linear-gradient(180deg,var(--blue) 0%,var(--blue-mid) 100%);
    border-radius:var(--radius-lg) 0 0 var(--radius-lg)}
- .p5h h2{font-family:var(--serif);font-size:17px;font-weight:600;font-style:italic;color:var(--blue-dk)}
+ .p5h h2{font-family:var(--serif);font-size:17px;font-weight:600;font-style:italic;color:var(--blue-dk);
+   align-self:center}
  .p5h h2 span{font-style:normal;font-weight:400;font-size:12px;color:var(--muted);margin-left:4px}
- .nav-g5{display:flex;align-items:center;gap:5px}
- .nav-g5>span{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-right:2px}
- .bn5{width:36px;height:36px;background:var(--bg2);border:1px solid var(--border);
-   border-radius:var(--radius-sm);font-size:13px;cursor:pointer;display:grid;
-   place-items:center;color:var(--text-soft);transition:background .18s,border-color .18s;
-   min-height:44px;min-width:44px}
- .bn5:hover:not(:disabled){background:var(--blue-lt);border-color:var(--blue)}
- .bn5:disabled{opacity:.28;cursor:not-allowed}
- #p5nomor{width:74px;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);
-   font-family:var(--sans);font-size:14px;font-weight:600;text-align:center;padding:0 5px;
-   background:var(--bg2);color:var(--text);min-height:44px;
-   transition:border-color .18s,background .18s,box-shadow .18s}
- #p5nomor:focus{outline:none;border-color:var(--blue-focus);background:#fff;box-shadow:0 0 0 3px var(--blue-lt)}
- #p5nomor:disabled{background:var(--surface2);color:var(--muted)}
+ .p5-search{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}
+ .p5-sf{display:flex;flex-direction:column;gap:3px}
+ .p5-sf label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+ .p5-sf input,.p5-sf select{height:36px;min-height:44px;padding:0 8px;font-size:12.5px;
+   border:1px solid var(--border);border-radius:var(--radius-sm);
+   background:var(--field-active-bg);color:var(--field-active-text);
+   -webkit-appearance:none;appearance:none}
+ .p5-sf input:focus,.p5-sf select:focus{outline:none;border-color:var(--blue-focus);box-shadow:0 0 0 3px var(--blue-lt)}
  .act-bar5{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 18px;
    background:var(--surface);border:1px solid var(--border-soft);
    border-radius:var(--radius-lg);box-shadow:var(--shadow)}
@@ -31,22 +26,20 @@
    .act-bar5{padding:10px 14px;gap:8px}
    .act-hint5{width:100%;text-align:center}
  }
- @media(max-width:480px){.p5h{flex-direction:column;align-items:flex-start}}
 </style>
 
 <div class="p5h">
  <h2>Laporan Dinas <span>/ Ruang Goretty</span></h2>
- <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-   <div class="nav-g5">
-     <span>No.</span>
-     <button class="bn5" id="p5-btn-prev" onclick="p5Navigasi(-1)">&#8592;</button>
-     <input type="number" id="p5nomor" min="1" placeholder="—">
-     <button class="bn5" id="p5-btn-next" onclick="p5Navigasi(+1)">&#8594;</button>
-     <button class="btn btn-ghost" id="p5nmr"
-       style="height:36px;padding:0 11px;font-size:12px;min-height:44px">Cari</button>
-   </div>
+ <div class="p5-search">
+   <div class="p5-sf"><label>Tanggal</label><input type="date" id="p5fTgl" style="width:140px"></div>
+   <div class="p5-sf" style="min-width:170px"><label>Nama Pasien</label>
+     <select id="p5fNama"><option value="">— pilih —</option></select></div>
+   <div class="p5-sf"><label>Shift</label>
+     <select id="p5fShift"><option>Pagi</option><option>Sore</option><option>Malam</option></select></div>
+   <button class="btn btn-ghost" id="p5cari" style="font-size:12px">&#128269; Buka</button>
    <button class="btn btn-primary" id="p5tambahdata" style="font-size:12px">+ Laporan Baru</button>
  </div>
+ <input type="hidden" id="p5nomor">
 </div>
 
 <div class="card">
@@ -123,122 +116,126 @@
 </div>
 
 <script>
-var p5Total=0, p5Edit=false, p5Nama='', p5Ready=false, p5Mode='lihat';
+var p5Nama='', p5Ready=false, p5Mode='lihat', p5Edit=false;
+
+// Daftar field IDENTITAS yang dikunci (abu-abu) saat membuat laporan baru.
+var P5_LOCK = ['p5tanggal','p5dinas','p5namahidden','p5pasien',
+               'p5umur','p5harike','p5agama','p5jaminan','p5dpjp','p5dpjplain'];
+// Field yang BISA diubah saat membuat laporan baru.
+var P5_NEW_EDIT = ['p5pj','p5pp','p5bed','p5diagnosis','p5laporan'];
 
 function initP5(params){
  if(!p5Ready){
-   document.getElementById('p5nmr').addEventListener('click',p5Cari);
-   document.getElementById('p5tambahdata').addEventListener('click',function(){p5Tambah(null);});
+   document.getElementById('p5cari').addEventListener('click',p5Buka);
+   document.getElementById('p5tambahdata').addEventListener('click',p5MulaiBaru);
    document.getElementById('p5simpan').addEventListener('click',p5Simpan);
    document.getElementById('p5update').addEventListener('click',p5Perbarui);
-   // §7 — saat input baru, ganti shift memicu ambil diagnosis/alat shift sebelumnya
-   document.getElementById('p5dinas').addEventListener('change',p5AmbilDiagnosisSebelumnya);
-   document.getElementById('p5nomor').addEventListener('keydown',function(e){
-     if(e.key==='Enter')     {e.preventDefault();p5Cari();   return;}
-     if(e.key==='ArrowRight'){e.preventDefault();p5Nav(+1);  return;}
-     if(e.key==='ArrowLeft') {e.preventDefault();p5Nav(-1);  return;}
-     if(e.key==='ArrowUp')   {e.preventDefault();p5Nav(+1);  return;}
-     if(e.key==='ArrowDown') {e.preventDefault();p5Nav(-1);  return;}
+   document.getElementById('p5fTgl').addEventListener('change',function(){
+     p5LoadNames(document.getElementById('p5fTgl').value);
+   });
+   document.getElementById('p5fNama').addEventListener('change',function(){
+     if(p5Mode!=='baru'&&p5Mode!=='edit') p5Buka();
+   });
+   document.getElementById('p5fShift').addEventListener('change',function(){
+     if(p5Mode!=='baru'&&p5Mode!=='edit') p5Buka();
    });
    p5Ready=true;
  }
 
  if(params && params.viewNomor){
-   loading(true);
-   google.script.run
-     .withSuccessHandler(function(raw){
-       loading(false);
-       if(!raw||raw===''){toast('Data tidak ditemukan','err');return;}
-       try{p5Render(JSON.parse(raw));}catch(e){toast('Error render: '+e.message,'err');}
-       if(!p5Total){
-         google.script.run
-           .withSuccessHandler(function(d){
-             try{p5Total=JSON.parse(d).total||0;}catch(e){}
-             p5NavUpdate(params.viewNomor);
-           })
-           .withFailureHandler(function(){})
-           .getInitialData();
-       }else{p5NavUpdate(params.viewNomor);}
-     })
-     .withFailureHandler(function(e){loading(false);errH(e);})
-     .caridata(params.viewNomor);
-
+   p5SetSearchDefaults();
+   p5LoadByNomor(params.viewNomor);
  }else if(params && params.isNew){
-   loading(true);
-   google.script.run
-     .withSuccessHandler(function(raw){
-       loading(false);
-       try{
-         var obj=JSON.parse(raw);
-         p5Total=obj.nomorBaru-1;
-         p5Tambah({namaPasien:params.namaPasien,shift:params.shift,
-                   hariIni:params.hariIni,dataPasien:obj.dataPasien});
-       }catch(e){toast('Error: '+e.message,'err');}
-     })
-     .withFailureHandler(function(e){loading(false);errH(e);})
-     .getNomorBaruDanDataPasien(params.namaPasien,params.shift);
-
+   // Dari Page1: nama + shift + tanggal sudah ditentukan → langsung mode baru terkunci
+   var tgl=params.hariIni||ymd(new Date());
+   document.getElementById('p5fTgl').value=tgl;
+   document.getElementById('p5fShift').value=params.shift||'Pagi';
+   p5LoadNames(tgl,function(){
+     p5EnsureNamaOption(params.namaPasien||'');
+     p5MulaiBaru();
+   });
  }else{
-   loading(true);
-   google.script.run
-     .withSuccessHandler(function(raw){
-       loading(false);
-       try{
-         var obj=JSON.parse(raw);
-         p5Total=obj.total||0;
-         if(p5Total>0 && obj.baris){
-           p5Render(obj.baris);
-         }else{
-           p5SetHint('Belum ada laporan. Klik + Laporan Baru untuk mulai.');
-         }
-         p5NavUpdate(p5Total);
-       }catch(e){
-         toast('Error memuat data: '+e.message,'err');
-         p5SetHint('Gagal memuat data. Coba klik tab ini lagi.');
-       }
-     })
-     .withFailureHandler(function(e){loading(false);errH(e);})
-     .getInitialData();
+   p5SetSearchDefaults();
+   p5LoadNames(document.getElementById('p5fTgl').value,function(){
+     p5KosongkanTampilan('Pilih tanggal, nama, dan shift lalu klik Buka — atau + Laporan Baru.');
+   });
  }
 }
 
-function p5Nav(arah){
- if(p5Edit)return;
- var n=parseInt(document.getElementById('p5nomor').value)||p5Total;
- var t=n+arah;
- if(t<1){toast('Sudah di nomor pertama.','err');p5NavUpdate(n);return;}
- if(t>p5Total){toast('Sudah di nomor terakhir ('+p5Total+').','err');p5NavUpdate(n);return;}
- p5Kunci();loading(true);
+function p5SetSearchDefaults(){
+ var t=document.getElementById('p5fTgl'); if(!t.value)t.value=ymd(new Date());
+ var s=document.getElementById('p5fShift'); if(!s.value)s.value='Pagi';
+}
+
+// Muat daftar nama: hari ini → pasien di ws2; tanggal lain → pasien yang punya laporan tgl tsb.
+function p5LoadNames(tgl,cb){
+ var sel=document.getElementById('p5fNama');
+ var today=ymd(new Date());
+ function fill(list){
+   var cur=sel.value;
+   sel.innerHTML='<option value="">— pilih —</option>';
+   (list||[]).forEach(function(n){
+     var o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o);
+   });
+   if(cur){for(var i=0;i<sel.options.length;i++){if(sel.options[i].value===cur){sel.value=cur;break;}}}
+   if(cb)cb();
+ }
+ if(!tgl||tgl===today){
+   google.script.run.withSuccessHandler(function(r){try{fill(JSON.parse(r));}catch(e){fill([]);}})
+     .withFailureHandler(function(){fill([]);}).getPasienHariIniNames();
+ }else{
+   google.script.run.withSuccessHandler(function(r){try{fill(JSON.parse(r));}catch(e){fill([]);}})
+     .withFailureHandler(function(){fill([]);}).getNamaPasienDalamRentang(tgl,tgl);
+ }
+}
+
+function p5EnsureNamaOption(nama){
+ if(!nama)return;
+ var sel=document.getElementById('p5fNama');
+ var found=false;
+ for(var i=0;i<sel.options.length;i++){if(sel.options[i].value===nama){found=true;break;}}
+ if(!found){var o=document.createElement('option');o.value=nama;o.textContent=nama;sel.appendChild(o);}
+ sel.value=nama;
+}
+
+// ── Buka laporan berdasarkan tanggal + nama + shift ──
+function p5Buka(){
+ var nama=document.getElementById('p5fNama').value;
+ var tgl =document.getElementById('p5fTgl').value;
+ var shift=document.getElementById('p5fShift').value;
+ if(!nama){p5KosongkanTampilan('Pilih nama pasien dulu.');return;}
+ if(!tgl||!shift){p5KosongkanTampilan('Lengkapi tanggal & shift.');return;}
+ loading(true);
  google.script.run
-   .withSuccessHandler(function(s){
+   .withSuccessHandler(function(raw){
      loading(false);
-     try{p5Render(JSON.parse(s));p5NavUpdate(t);}
-     catch(e){toast('Error: '+e.message,'err');}
+     if(!raw||raw===''){
+       p5KosongkanTampilan('Belum ada laporan '+shift+' untuk '+nama+' pada '+fmtDMY(tgl)+
+         '. Klik + Laporan Baru untuk membuat.');
+       p5Nama=nama;
+       return;
+     }
+     try{p5Render(JSON.parse(raw));}catch(e){toast('Error render: '+e.message,'err');}
    })
    .withFailureHandler(function(e){loading(false);errH(e);})
-   .caridata(t);
+   .getLaporanByTNS(nama,tgl,shift);
 }
-function p5Cari(){
- var c=parseInt(document.getElementById('p5nomor').value);
- if(!c||c<1)return;
- if(c>p5Total){toast('Nomor '+c+' belum ada.','err');return;}
- p5Kunci();loading(true);
+
+function p5LoadByNomor(nomor){
+ loading(true);
  google.script.run
-   .withSuccessHandler(function(s){
+   .withSuccessHandler(function(raw){
      loading(false);
-     try{p5Render(JSON.parse(s));p5NavUpdate(c);}
-     catch(e){toast('Error: '+e.message,'err');}
+     if(!raw||raw===''){p5KosongkanTampilan('Data tidak ditemukan.');return;}
+     try{p5Render(JSON.parse(raw));}catch(e){toast('Error render: '+e.message,'err');}
    })
    .withFailureHandler(function(e){loading(false);errH(e);})
-   .caridata(c);
+   .caridata(nomor);
 }
-function p5NavUpdate(n){
- document.getElementById('p5-btn-prev').disabled=(n<=1);
- document.getElementById('p5-btn-next').disabled=(n>=p5Total);
-}
+
 function p5Render(baris){
  var r=(Array.isArray(baris)&&baris.length>0&&Array.isArray(baris[0]))?baris[0]:baris;
- if(!r||!r.length){p5SetHint('Data kosong');return;}
+ if(!r||!r.length){p5KosongkanTampilan('Data kosong.');return;}
  p5Nama=String(r[4]||'');
  var ids={p5nomor:r[0],p5dinas:r[2],p5pj:r[3],p5namahidden:r[4],
    p5pasien:r[4],p5pp:r[5],p5diagnosis:r[6],p5laporan:r[7],
@@ -250,40 +247,44 @@ function p5Render(baris){
  });
  var tgEl=document.getElementById('p5tanggal');
  if(tgEl){
-   if(r[1]){
-     try{
-       var d=new Date(r[1]);
-       tgEl.value=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
-     }catch(e){tgEl.value='';}
-   }else{tgEl.value='';}
+   if(r[1]){try{var d=new Date(r[1]);
+     tgEl.value=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
+   }catch(e){tgEl.value='';}}else{tgEl.value='';}
  }
  document.querySelectorAll('.multi').forEach(function(cb){cb.checked=false;});
  if(r[8]&&String(r[8]).length>0){
    String(r[8]).split(';').forEach(function(id){
-     var el=document.getElementById(id);if(el)el.checked=true;
+     var el=document.getElementById(String(id).trim());if(el)el.checked=true;
    });
  }
+ // Sinkronkan kontrol pencarian dengan laporan yang dibuka
+ var fTgl=document.getElementById('p5fTgl');
+ if(r[1]&&fTgl&&tgEl)fTgl.value=tgEl.value;
+ document.getElementById('p5fShift').value=String(r[2]||'')||'Pagi';
+ p5EnsureNamaOption(String(r[4]||''));
  p5Kunci();
 }
+
+// Mode LIHAT (semua terkunci, tombol Perbarui tampil)
 function p5Kunci(){
- p5Aktif(false,false);
+ P5_LOCK.concat(P5_NEW_EDIT).forEach(function(id){
+   var el=document.getElementById(id);if(el)el.disabled=true;
+ });
+ document.querySelectorAll('.multi').forEach(function(cb){cb.disabled=true;});
  document.getElementById('p5pasien').hidden=true;
  document.getElementById('p5namahidden').hidden=false;
  if(p5Nama&&!document.getElementById('p5namahidden').value)
    document.getElementById('p5namahidden').value=p5Nama;
  document.getElementById('p5simpan').hidden=true;
  document.getElementById('p5update').hidden=false;
- document.getElementById('p5nomor').disabled=false;
- document.getElementById('p5nmr').disabled=false;
  p5ReqShow(false);
  p5SetHint('Mode lihat — klik Perbarui untuk mengedit');
- p5Edit=false;
- p5Mode='lihat';
+ p5Edit=false;p5Mode='lihat';
 }
+
+// Mode EDIT laporan yang sudah ada (identitas tetap terkunci)
 function p5Perbarui(){
- ['p5nomor','p5tanggal','p5dinas','p5pj','p5pp'].forEach(function(id){
-   document.getElementById(id).disabled=true;
- });
+ P5_LOCK.forEach(function(id){var el=document.getElementById(id);if(el)el.disabled=true;});
  ['p5bed','p5diagnosis','p5laporan'].forEach(function(id){
    document.getElementById(id).disabled=false;
  });
@@ -292,62 +293,74 @@ function p5Perbarui(){
  document.getElementById('p5update').hidden=true;
  p5ReqShow(false);
  p5SetHint('Mode edit — ubah data lalu klik Simpan');
- p5Edit=true;
- p5Mode='edit';
+ p5Edit=true;p5Mode='edit';
 }
-function p5Tambah(params){
- p5Bersih();p5Nama='';
- document.getElementById('p5nomor').value=p5Total+1;
- p5Aktif(true,true);
- document.getElementById('p5nomor').disabled=true;
+
+// ── Buat laporan BARU (identitas dikunci) ──
+function p5MulaiBaru(){
+ var nama=document.getElementById('p5fNama').value;
+ var tgl =document.getElementById('p5fTgl').value;
+ var shift=document.getElementById('p5fShift').value;
+ if(!nama){toast('Pilih nama pasien dulu.','err');return;}
+ if(!tgl){toast('Pilih tanggal dulu.','err');return;}
+ if(!shift){toast('Pilih shift dulu.','err');return;}
+ loading(true);
+ google.script.run
+   .withSuccessHandler(function(h){
+     loading(false);
+     var p=null;try{p=JSON.parse(h);}catch(e){}
+     p5SetupBaru(nama,tgl,shift,p);
+   })
+   .withFailureHandler(function(e){loading(false);errH(e);})
+   .umuragamajaminan(nama);
+}
+
+function p5SetupBaru(nama,tgl,shift,p){
+ p5Bersih();
+ p5Mode='baru';p5Edit=true;p5Nama=nama;
+ document.getElementById('p5nomor').value='';
+ document.getElementById('p5namahidden').value=nama;
+ document.getElementById('p5namahidden').hidden=false;
+ document.getElementById('p5pasien').hidden=true;
+ document.getElementById('p5tanggal').value=tgl;
+ document.getElementById('p5dinas').value=shift;
+ if(p){
+   var map={p5umur:p[14],p5harike:p[15],p5agama:p[6],
+            p5jaminan:p[8],p5dpjp:p[12],p5dpjplain:p[13],p5bed:p[11]};
+   Object.keys(map).forEach(function(id){
+     var el=document.getElementById(id);if(el)el.value=p5Fv(map[id]);
+   });
+ }
+ // Kunci identitas, buka field yang boleh diisi
+ P5_LOCK.forEach(function(id){var el=document.getElementById(id);if(el)el.disabled=true;});
+ P5_NEW_EDIT.forEach(function(id){var el=document.getElementById(id);if(el)el.disabled=false;});
+ document.querySelectorAll('.multi').forEach(function(cb){cb.disabled=false;});
  document.getElementById('p5simpan').hidden=false;
  document.getElementById('p5update').hidden=true;
  p5ReqShow(true);
- p5SetHint('Mode input baru — isi data lalu klik Simpan');
- p5Edit=true;
- p5Mode='baru';
- if(params){
-   var tgEl=document.getElementById('p5tanggal');if(tgEl)tgEl.value=params.hariIni||'';
-   var dnEl=document.getElementById('p5dinas');if(dnEl)dnEl.value=params.shift||'';
-   var nhEl=document.getElementById('p5namahidden');
-   if(nhEl){nhEl.value=params.namaPasien||'';nhEl.hidden=false;}
-   var psEl=document.getElementById('p5pasien');
-   if(psEl){psEl.hidden=true;psEl.disabled=true;}
-   p5Nama=params.namaPasien||'';
-   var p=params.dataPasien;
-   if(p){
-     var map={p5umur:p[14],p5harike:p[15],p5agama:p[6],
-              p5jaminan:p[8],p5dpjp:p[12],p5dpjplain:p[13],p5bed:p[11]};
-     Object.keys(map).forEach(function(id){
-       var el=document.getElementById(id);if(el)el.value=p5Fv(map[id]);
-     });
-   }
-   // §7 — identitas (nama+tanggal+shift) sudah lengkap → ambil shift sebelumnya
-   p5AmbilDiagnosisSebelumnya();
- }else{
-   var psEl2=document.getElementById('p5pasien');
-   if(psEl2){psEl2.hidden=false;psEl2.disabled=false;}
-   var nhEl2=document.getElementById('p5namahidden');
-   if(nhEl2)nhEl2.hidden=true;
-   psEl2.onchange=p5AmbilPasien;
- }
+ p5SetHint('Mode input baru — isi PJ/PP, alat, diagnosis & laporan, lalu Simpan');
+ // §7 — ambil diagnosis & alat dari 1 shift dinas sebelumnya
+ p5AmbilDiagnosisSebelumnya();
 }
+
 function p5Simpan(){
  var ui=p5Kumpul();
- if(!ui.nomor||!ui.tanggal||!ui.dinas||!ui.pj||!ui.pasien||!ui.pp){
+ var wajib=ui.tanggal&&ui.dinas&&ui.pj&&ui.pp&&ui.pasien;
+ if(!wajib || (p5Mode!=='baru' && !ui.nomor)){
    toast('Ada data wajib yang belum diisi.','err');return;
  }
- ui.isBaru=(p5Mode==='baru');           // §5 — server tentukan baru vs edit dari flag ini
+ ui.isBaru=(p5Mode==='baru');
  p5Nama=ui.pasien;
  var btn=document.getElementById('p5simpan');
- btn.disabled=true;loading(true);       // anti klik-ganda
+ btn.disabled=true;loading(true);
  google.script.run
    .withSuccessHandler(function(raw){
      loading(false);btn.disabled=false;
      var res;try{res=JSON.parse(raw);}catch(e){res=null;}
      if(!res||!res.ok){
        if(res&&res.alasan==='duplikat'){
-         toast('Laporan pasien+tanggal+shift ini sudah ada (No. '+res.nomor+').','err');
+         toast('Laporan untuk pasien+tanggal+shift ini sudah ada (No. '+res.nomor+'). Membuka laporan tersebut…','err');
+         p5LoadByNomor(res.nomor);   // buka existing → otomatis mode LIHAT
        }else if(res&&res.alasan==='tidak_ditemukan'){
          toast('Laporan tidak ditemukan untuk diedit.','err');
        }else if(res&&res.alasan==='sibuk'){
@@ -357,44 +370,23 @@ function p5Simpan(){
        }
        return;
      }
-     var finalNomor=res.nomor;            // §5 — pakai nomor FINAL dari server, bukan preview
-     document.getElementById('p5nomor').value=finalNomor;
-     if(finalNomor>p5Total)p5Total=finalNomor;
+     document.getElementById('p5nomor').value=res.nomor;
      p5Kunci();
      var nhEl=document.getElementById('p5namahidden');
      if(nhEl&&p5Nama)nhEl.value=p5Nama;
-     p5NavUpdate(finalNomor);
-     toast('Data berhasil disimpan (No. '+finalNomor+').','ok');
+     toast('Data berhasil disimpan (No. '+res.nomor+').','ok');
      loaded.p1=false;
    })
    .withFailureHandler(function(e){loading(false);btn.disabled=false;errH(e);})
    .simpandisheet(ui);
 }
-function p5AmbilPasien(){
- var nama=document.getElementById('p5pasien').value;if(!nama)return;
- p5Nama=nama;
- google.script.run
-   .withSuccessHandler(function(h){
-     var p=JSON.parse(h);if(!p)return;
-     var map={p5umur:p[14],p5harike:p[15],p5agama:p[6],
-              p5jaminan:p[8],p5dpjp:p[12],p5dpjplain:p[13],p5bed:p[11]};
-     Object.keys(map).forEach(function(id){
-       var el=document.getElementById(id);if(el)el.value=p5Fv(map[id]);
-     });
-     p5AmbilDiagnosisSebelumnya(); // §7 — setelah pasien dipilih
-   })
-   .withFailureHandler(errH)
-   .umuragamajaminan(nama);
-}
 
 // §7 — Ambil diagnosis & alat medik dari 1 shift dinas sebelumnya (hanya saat input BARU).
 // - Diagnosis hanya diisi bila textarea masih kosong (jangan timpa ketikan user).
-// - Alat medik hanya dicentang bila belum ada yang tercentang, dan hanya checkbox non-disabled.
+// - Alat hanya dicentang bila belum ada yang tercentang, dan hanya checkbox non-disabled.
 function p5AmbilDiagnosisSebelumnya(){
  if(p5Mode!=='baru')return;
- var psEl=document.getElementById('p5pasien');
- var nama=(psEl&&!psEl.hidden&&psEl.value)?psEl.value
-          :(document.getElementById('p5namahidden').value||p5Nama);
+ var nama=document.getElementById('p5namahidden').value||p5Nama;
  var tanggal=document.getElementById('p5tanggal').value;
  var shift=document.getElementById('p5dinas').value;
  if(!nama||!tanggal||!shift)return;
@@ -415,23 +407,11 @@ function p5AmbilDiagnosisSebelumnya(){
    .withFailureHandler(function(){})
    .getDiagnosisShiftSebelumnya(nama,tanggal,shift);
 }
-function p5Aktif(a,inc){
- ['p5tanggal','p5dinas','p5pj','p5pp','p5bed','p5diagnosis','p5laporan'].forEach(function(id){
-   var el=document.getElementById(id);if(el)el.disabled=!a;
- });
- if(inc){var ps=document.getElementById('p5pasien');if(ps)ps.disabled=!a;}
- document.querySelectorAll('.multi').forEach(function(cb){cb.disabled=!a;});
-}
-function p5Fv(v){
- if(v instanceof Date)return v.getFullYear()+'-'+('0'+(v.getMonth()+1)).slice(-2)+'-'+('0'+v.getDate()).slice(-2);
- return String(v===null||v===undefined?'':v);
-}
+
 function p5Kumpul(){
- var dr=!document.getElementById('p5pasien').hidden;
  var ui={};
- ui.pasien=dr?document.getElementById('p5pasien').value
-             :(document.getElementById('p5namahidden').value||p5Nama);
- ui.nomor=parseInt(document.getElementById('p5nomor').value);
+ ui.pasien=document.getElementById('p5namahidden').value||p5Nama;
+ ui.nomor=parseInt(document.getElementById('p5nomor').value)||0;
  ui.tanggal=document.getElementById('p5tanggal').value;
  ui.dinas=document.getElementById('p5dinas').value;
  ui.pj=document.getElementById('p5pj').value;
@@ -449,6 +429,7 @@ function p5Kumpul(){
    .map(function(e){return e.value;}).join(';');
  return ui;
 }
+
 function p5Bersih(){
  ['p5nomor','p5tanggal','p5umur','p5harike','p5agama','p5jaminan',
   'p5dpjp','p5dpjplain','p5laporan','p5diagnosis','p5namahidden'].forEach(function(id){
@@ -459,9 +440,27 @@ function p5Bersih(){
  });
  document.querySelectorAll('.multi').forEach(function(cb){cb.checked=false;});
 }
+
+// Kosongkan tampilan + sembunyikan tombol aksi (tidak ada laporan termuat)
+function p5KosongkanTampilan(hint){
+ p5Bersih();
+ P5_LOCK.concat(P5_NEW_EDIT).forEach(function(id){
+   var el=document.getElementById(id);if(el)el.disabled=true;
+ });
+ document.querySelectorAll('.multi').forEach(function(cb){cb.disabled=true;});
+ document.getElementById('p5simpan').hidden=true;
+ document.getElementById('p5update').hidden=true;
+ p5ReqShow(false);
+ p5Edit=false;p5Mode='lihat';
+ p5SetHint(hint||'');
+}
+
+function p5Fv(v){
+ if(v instanceof Date)return v.getFullYear()+'-'+('0'+(v.getMonth()+1)).slice(-2)+'-'+('0'+v.getDate()).slice(-2);
+ return String(v===null||v===undefined?'':v);
+}
 function p5ReqShow(v){
  document.querySelectorAll('.req').forEach(function(e){e.style.display=v?'inline':'none';});
 }
 function p5SetHint(t){var e=document.getElementById('p5hint');if(e)e.textContent=t;}
-function p5Navigasi(arah){p5Nav(arah);}
 </script>
