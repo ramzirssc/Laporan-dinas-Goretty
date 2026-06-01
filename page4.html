@@ -1,0 +1,443 @@
+<!-- PAGE 4: LAPORAN DINAS -->
+<style>
+  .p4d-outer{display:flex;flex-direction:column;height:calc(100vh - var(--topbar-h) - 28px)}
+  .p4d-top{flex-shrink:0}
+  .p4d-search-bar{background:#1e3f62;padding:10px 14px;
+    border-radius:var(--radius-lg) var(--radius-lg) 0 0;
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .p4d-search-label{font-size:11px;font-weight:700;text-transform:uppercase;
+    letter-spacing:.06em;color:rgba(255,255,255,.65);white-space:nowrap;flex-shrink:0}
+  .p4d-search-inner{position:relative;flex:1;min-width:240px}
+  .p4d-search-inner input{width:100%;height:34px;padding:0 34px 0 12px;
+    border:1px solid rgba(255,255,255,.25);border-radius:var(--radius-sm);
+    background:rgba(255,255,255,.1);color:#fff;font-family:var(--sans);font-size:13px}
+  .p4d-search-inner input::placeholder{color:rgba(255,255,255,.45)}
+  .p4d-search-inner input:focus{outline:none;background:rgba(255,255,255,.18);
+    border-color:rgba(255,255,255,.55)}
+  .p4d-sx{position:absolute;right:8px;top:50%;transform:translateY(-50%);
+    background:none;border:none;color:rgba(255,255,255,.55);font-size:16px;
+    cursor:pointer;line-height:1;display:none}
+  .p4d-sx.show{display:block}.p4d-sx:hover{color:#fff}
+  .p4d-dd{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:400;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    box-shadow:var(--shadow-lg);display:none;max-height:300px;overflow-y:auto}
+  .p4d-dd.open{display:block}
+  .p4d-dd-hint{padding:6px 12px;font-size:11px;color:var(--muted);
+    background:var(--surface2);border-bottom:1px solid var(--border-soft);font-style:italic}
+  .p4d-dd-item{padding:9px 12px;cursor:pointer;display:flex;align-items:baseline;
+    justify-content:space-between;gap:8px;border-bottom:0.5px solid var(--border-soft)}
+  .p4d-dd-item:last-child{border-bottom:none}
+  .p4d-dd-item:hover{background:var(--blue-lt)}
+  .p4d-dd-item:active{background:var(--blue-mid)}
+  .p4d-dd-nama{font-size:13px;font-weight:600;color:var(--text)}
+  .p4d-dd-nama mark{background:none;color:var(--blue);font-weight:700}
+  .p4d-dd-meta{font-size:11px;color:var(--muted);white-space:nowrap}
+  .p4d-dd-empty{padding:14px 12px;text-align:center;font-size:12px;color:var(--muted);font-style:italic}
+  .p4d-dd-loading{padding:14px 12px;text-align:center;font-size:12px;color:var(--muted)}
+  .p4d-sel-bar{background:var(--blue-lt);border:1px solid var(--blue-mid);
+    border-top:none;border-bottom:none;padding:7px 14px;
+    display:none;align-items:center;justify-content:space-between;gap:10px}
+  .p4d-sel-bar.show{display:flex}
+  .p4d-sel-txt{font-size:13px;font-weight:600;color:var(--blue-dk)}
+  .p4d-sel-x{background:none;border:none;color:var(--blue);font-size:18px;
+    cursor:pointer;line-height:1;padding:0 2px;opacity:.65;flex-shrink:0}
+  .p4d-sel-x:hover{opacity:1}
+  .p4d-sep-bar{padding:4px 14px;background:var(--surface2);
+    border:1px solid var(--border-soft);border-top:none;border-bottom:none;
+    font-size:10.5px;color:var(--muted);text-align:center}
+  .p4df{background:var(--surface);border:1px solid var(--border-soft);
+    border-top:none;border-bottom:none;padding:10px 14px}
+  .p4df-row{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}
+  .ff4{display:flex;flex-direction:column;gap:3px}
+  .ff4 label{font-size:10px;font-weight:700;text-transform:uppercase;
+    letter-spacing:.08em;color:var(--muted)}
+  .ff4 input[type="date"]{height:34px;padding:0 8px;font-size:12.5px;
+    border:1px solid var(--field-locked-border);border-radius:var(--radius-sm);
+    background:var(--field-locked-bg);color:var(--field-locked-text);
+    -webkit-appearance:none;appearance:none;cursor:default;min-width:120px}
+  .ff4 select{height:34px;padding:0 8px;font-size:12.5px;border:1px solid var(--border);
+    border-radius:var(--radius-sm);background:var(--field-active-bg);color:var(--field-active-text);
+    -webkit-appearance:none;appearance:none}
+  .ff4 select:focus{outline:none;border-color:var(--blue-focus);box-shadow:0 0 0 3px var(--blue-lt)}
+  .p4d-cnt{font-size:12px;color:var(--muted);font-style:italic;padding:5px 14px;
+    background:var(--surface2);border:1px solid var(--border-soft);
+    border-top:none;border-bottom:none;flex-shrink:0}
+  .p4d-scroll{flex:1;overflow-y:auto;overflow-x:hidden;background:var(--bg);
+    border:1px solid var(--border-soft);border-top:none;
+    border-radius:0 0 var(--radius-lg) var(--radius-lg);
+    box-shadow:var(--shadow);padding:12px 14px}
+  .p4d-patient-sec{margin-bottom:18px;border-radius:var(--radius-lg);
+    overflow:hidden;box-shadow:var(--shadow)}
+  .p4d-patient-hdr{background:#1e3f62;color:#fff;padding:9px 14px;
+    display:flex;align-items:center;justify-content:space-between}
+  .p4d-pnm{font-family:var(--serif);font-size:13px;font-weight:600;font-style:italic}
+  .p4d-pcnt{font-size:11px;opacity:.75;background:rgba(255,255,255,.15);
+    padding:2px 9px;border-radius:10px;white-space:nowrap}
+  .p4d-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
+    padding:12px;background:var(--surface2);
+    border:1px solid var(--border-soft);border-top:none}
+  .p4d-card{border-radius:var(--radius);border:1px solid var(--border-soft);
+    box-shadow:var(--shadow);overflow:hidden;background:var(--surface)}
+  .p4d-ch{padding:8px 12px;display:flex;align-items:center;justify-content:space-between}
+  .p4d-ch-left{display:flex;flex-direction:column;gap:1px}
+  .p4d-shift{font-size:12px;font-weight:700;line-height:1.3}
+  .p4d-date{font-size:11px;opacity:.85;line-height:1.3}
+  .sh-no{font-size:11px;font-weight:600;text-decoration:underline;cursor:pointer;opacity:.85}
+  .sh-no:hover{opacity:1}
+  .p4d-pagi .p4d-ch{background:#e6f7ec;color:#1a5c2e;border-bottom:1px solid #c0e8cc}
+  .p4d-sore .p4d-ch{background:#fff7e0;color:#7a5200;border-bottom:1px solid #f0dc8a}
+  .p4d-malam .p4d-ch{background:#e8eef6;color:#1a3a6a;border-bottom:1px solid #b8cce0}
+  .p4d-cb{padding:9px 12px;font-size:12px;line-height:1.6}
+  /* Grid field: setiap baris bisa 1, 2, atau 3 kolom */
+  .p4d-frow{display:grid;gap:2px 8px;margin-bottom:2px}
+  .p4d-frow.col3{grid-template-columns:repeat(3,1fr)}
+  .p4d-frow.col2{grid-template-columns:1fr 1fr}
+  .p4d-frow.col1{grid-template-columns:1fr}
+  /* Setiap field: label + titik-dua lurus + nilai */
+  .p4d-fi{display:grid;grid-template-columns:52px 8px 1fr;align-items:baseline;gap:0}
+  .p4d-fl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+    color:var(--muted);white-space:nowrap;text-align:right}
+  .p4d-fc{font-size:10px;font-weight:700;color:var(--muted);text-align:center}
+  .p4d-fv{font-size:12px;color:var(--text-soft);word-break:break-word;padding-left:3px}
+  .p4d-chips{display:flex;flex-wrap:wrap;gap:3px;margin:4px 0 6px}
+  .p4d-chip{font-size:10px;padding:2px 7px;background:var(--blue-lt);color:var(--blue-dk);
+    border:1px solid var(--blue-mid);border-radius:9px;font-weight:600}
+  .p4d-sep{border:none;border-top:1px solid var(--border-soft);margin:7px 0}
+  .p4d-diag{font-size:11.5px;color:var(--text-soft);font-style:italic;margin-bottom:5px;line-height:1.5}
+  .p4d-lap{font-size:12px;line-height:1.7;color:var(--text);white-space:pre-wrap;
+    word-wrap:break-word;word-break:break-word}
+  .no-lap4{color:var(--muted);font-style:italic;font-size:12px}
+  .p4d-hint{text-align:center;padding:40px;color:var(--muted);font-size:13px}
+  .p4d-loader{text-align:center;padding:28px;color:var(--muted)}
+  .p4d-empty{text-align:center;padding:40px;color:var(--muted)}
+  .p4d-err{padding:20px;color:#c0392b;font-size:13px;background:#fdf0ee;
+    border-radius:var(--radius-lg);border:1px solid #e8a09a}
+  .btn-print4{background:var(--surface);color:var(--slate);border:1px solid var(--slate);
+    height:34px;padding:0 12px;border-radius:var(--radius-sm);font-family:var(--sans);
+    font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;
+    gap:5px;white-space:nowrap;min-height:44px;transition:background .18s}
+  .btn-print4:hover{background:var(--slate-lt)}
+  .p4d-print-title{display:none;margin-bottom:10pt;padding-bottom:6pt;border-bottom:1pt solid #c8d4e3}
+  .p4d-print-title h1{font-size:13pt;font-weight:700;color:#1e3f62}
+  .p4d-print-title p{font-size:9pt;color:#666;margin-top:3pt}
+  @media print{
+    .p4d-outer{height:auto !important;display:block !important}
+    .p4d-scroll{overflow:visible !important;border:none !important;padding:0 !important;
+      box-shadow:none !important;background:#fff !important}
+    .p4d-search-bar,.p4d-sel-bar,.p4d-sep-bar,.p4df,.p4d-cnt,.btn-print4,.topbar{display:none !important}
+    .p4d-print-title{display:block !important}
+    .p4d-patient-sec{break-inside:avoid;margin-bottom:14pt}
+    .p4d-grid{grid-template-columns:repeat(3,1fr) !important;gap:6pt !important;
+      background:#fff !important;padding:8pt !important}
+    .p4d-card{break-inside:avoid;box-shadow:none !important;border:0.5pt solid #c8d4e3 !important}
+    .p4d-lap,.p4d-diag{font-size:8.5pt !important;line-height:1.4 !important}
+    .p4d-cb{padding:5pt 7pt !important}
+    body{background:#fff !important}
+    .p4d-pagi .p4d-ch{background:#e6f7ec !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .p4d-sore .p4d-ch{background:#fff7e0 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .p4d-malam .p4d-ch{background:#e8eef6 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .p4d-patient-hdr{background:#1e3f62 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+  @media(max-width:1023px){.p4d-grid{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:767px){
+    .p4d-outer{height:calc(100vh - var(--topbar-h) - 20px)}
+    .p4d-search-bar{padding:9px 10px;gap:7px}
+    .p4df{padding:9px 10px}.p4df-row{gap:6px}
+    .p4d-scroll{padding:10px}
+    .p4d-grid{grid-template-columns:1fr}
+  }
+</style>
+
+<div class="p4d-outer">
+  <div class="p4d-top">
+    <!-- ① SEARCH: cari dari SELURUH bank data -->
+    <div class="p4d-search-bar">
+      <span class="p4d-search-label">🔍 Cari pasien</span>
+      <div class="p4d-search-inner">
+        <input type="text" id="p4d-search"
+          placeholder="Ketik nama (min. 2 huruf) → tampil semua riwayat historis"
+          autocomplete="off" oninput="p4dSearchInput()">
+        <button class="p4d-sx" id="p4d-sx" onclick="p4dSearchClear()">×</button>
+        <div class="p4d-dd" id="p4d-dd"></div>
+      </div>
+      <button class="btn-print4" onclick="window.print()">🖨 Cetak PDF</button>
+    </div>
+    <!-- Bar nama terpilih dari search -->
+    <div class="p4d-sel-bar" id="p4d-sel-bar">
+      <span class="p4d-sel-txt" id="p4d-sel-txt"></span>
+      <button class="p4d-sel-x" onclick="p4dSearchClear()">×</button>
+    </div>
+    <!-- Separator -->
+    <div class="p4d-sep-bar">— atau pilih dari pasien hari ini (6 laporan terakhir) —</div>
+    <!-- ② PASIEN HARI INI -->
+    <div class="p4df">
+      <div class="p4df-row">
+        <div class="ff4"><label>Dari</label>
+          <input type="date" id="p4d-dari" disabled style="width:130px"></div>
+        <div class="ff4" style="justify-content:flex-end;padding-bottom:5px">
+          <span style="font-size:12px;color:var(--muted)">s/d</span></div>
+        <div class="ff4"><label>Sampai</label>
+          <input type="date" id="p4d-sampai" disabled style="width:130px"></div>
+        <div class="ff4" style="flex:3;min-width:160px"><label>Nama Pasien Hari Ini</label>
+          <select id="p4d-nama" onchange="p4dOnNamaChange()">
+            <option value="">— Semua Pasien Hari Ini —</option>
+          </select></div>
+        <div style="display:flex;gap:6px;align-items:flex-end">
+          <button class="btn btn-primary" onclick="p4dTampilkan()"
+            style="height:34px;min-height:44px">Tampilkan</button>
+        </div>
+      </div>
+    </div>
+    <div class="p4d-cnt" id="p4d-cnt">Memuat data pasien hari ini…</div>
+  </div>
+
+  <div class="p4d-scroll" id="p4d-scroll">
+    <div class="p4d-print-title">
+      <h1>Laporan Dinas — IPI Damianus RS St. Carolus</h1>
+      <p id="p4d-print-sub"></p>
+    </div>
+    <div id="p4d-loader" class="p4d-loader" style="display:none">Memuat laporan…</div>
+    <div id="p4d-content"><div class="p4d-hint">Memuat data…</div></div>
+  </div>
+</div>
+
+<script>
+var p4dMode = 'hari';   // 'hari' | 'search'
+var p4dSearchRes = [];
+var p4dTimer = null;
+
+function initP4() {
+  var today = new Date(), dua = new Date();
+  dua.setDate(today.getDate()-2);
+  document.getElementById('p4d-dari').value   = ymd(dua);
+  document.getElementById('p4d-sampai').value = ymd(today);
+  p4dLoadHariIni();
+}
+
+// ── Pasien hari ini ──────────────────────────────────
+function p4dLoadHariIni() {
+  p4dMode = 'hari';
+  p4dShowLoader();
+  google.script.run
+    .withSuccessHandler(function(raw){
+      loading(false);
+      document.getElementById('p4d-loader').style.display = 'none';
+      try {
+        var obj = JSON.parse(raw);
+        var pasienHariIni = obj.pasienHariIni || [];
+        // Isi dropdown
+        var sel = document.getElementById('p4d-nama'), cur = sel.value;
+        sel.innerHTML = '<option value="">— Semua Pasien Hari Ini —</option>';
+        pasienHariIni.forEach(function(n){
+          var o = document.createElement('option');
+          o.value = n; o.textContent = n; if(n===cur) o.selected=true; sel.appendChild(o);
+        });
+        p4dRenderObjek(obj.laporan||{}, pasienHariIni, '6 laporan terakhir per pasien');
+      } catch(e) { p4dShowErr(String(e)); }
+    })
+    .withFailureHandler(function(e){ loading(false); p4dShowErr(e&&e.message?e.message:String(e)); })
+    .getDataPage4('','','',false);
+}
+
+function p4dOnNamaChange() { p4dTampilkan(); }
+
+function p4dTampilkan() {
+  if(p4dMode === 'search') p4dSearchClear();
+  var nama = document.getElementById('p4d-nama').value;
+  p4dMode = 'hari';
+  p4dShowLoader();
+  google.script.run
+    .withSuccessHandler(function(raw){
+      loading(false);
+      document.getElementById('p4d-loader').style.display = 'none';
+      try {
+        var obj = JSON.parse(raw);
+        var pasienHariIni = obj.pasienHariIni || [];
+        var targets = nama ? [nama] : pasienHariIni;
+        p4dRenderObjek(obj.laporan||{}, targets, '6 laporan terakhir');
+      } catch(e) { p4dShowErr(String(e)); }
+    })
+    .withFailureHandler(function(e){ loading(false); p4dShowErr(e&&e.message?e.message:String(e)); })
+    .getDataPage4(nama,'','',false);
+}
+
+function p4dRenderObjek(laporan, targets, label) {
+  var totalLap=0, pasienDgLap=0;
+  targets.forEach(function(n){ var l=(laporan[n]||[]).length; totalLap+=l; if(l>0)pasienDgLap++; });
+  document.getElementById('p4d-cnt').textContent =
+    totalLap+' laporan · '+pasienDgLap+'/'+targets.length+' pasien · '+label;
+  if(!totalLap){
+    document.getElementById('p4d-content').innerHTML='<div class="p4d-empty">📭 Tidak ada laporan</div>';
+    return;
+  }
+  var html='';
+  targets.forEach(function(n){ var l=laporan[n]||[]; if(l.length) html+=p4dBuildSeksi(n,l); });
+  document.getElementById('p4d-content').innerHTML=html||'<div class="p4d-empty">Tidak ada data</div>';
+  document.getElementById('p4d-print-sub').textContent=
+    (targets.length===1?targets[0]:'Semua pasien')+' · '+label+' · Dicetak: '+fmtDMY(ymd(new Date()));
+}
+
+// ── Search dari seluruh bank data ───────────────────
+function p4dSearchInput() {
+  var q = document.getElementById('p4d-search').value.trim();
+  document.getElementById('p4d-sx').classList.toggle('show', q.length>0);
+  if(q.length<2){ document.getElementById('p4d-dd').classList.remove('open'); clearTimeout(p4dTimer); return; }
+  clearTimeout(p4dTimer);
+  p4dTimer = setTimeout(function(){ p4dDoSearch(q); }, 350);
+}
+
+function p4dDoSearch(q) {
+  var dd = document.getElementById('p4d-dd');
+  dd.innerHTML='<div class="p4d-dd-loading">Mencari di seluruh data…</div>';
+  dd.classList.add('open');
+  google.script.run
+    .withSuccessHandler(function(raw){
+      try {
+        p4dSearchRes = JSON.parse(raw);
+        if(!p4dSearchRes.length){
+          dd.innerHTML='<div class="p4d-dd-empty">Tidak ada pasien "'+esc(q)+'"</div>'; return;
+        }
+        var re=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+        var html='<div class="p4d-dd-hint">'+p4dSearchRes.length+' nama — klik untuk lihat seluruh riwayat</div>';
+        p4dSearchRes.forEach(function(item,i){
+          html+='<div class="p4d-dd-item" onclick="p4dPilih('+i+')">'
+            +'<span class="p4d-dd-nama">'+esc(item.nama).replace(re,'<mark>$1</mark>')+'</span>'
+            +'<span class="p4d-dd-meta">'+item.jumlah+' laporan · terakhir '+esc(item.tglTerakhir)+'</span>'
+            +'</div>';
+        });
+        dd.innerHTML=html;
+      } catch(e){ dd.innerHTML='<div class="p4d-dd-empty">Error: '+esc(String(e))+'</div>'; }
+    })
+    .withFailureHandler(function(e){
+      dd.innerHTML='<div class="p4d-dd-empty">Gagal: '+esc(e&&e.message?e.message:String(e))+'</div>';
+    })
+    .cariSemuaNamaPasien(q);
+}
+
+function p4dPilih(i) {
+  var item = p4dSearchRes[i]; if(!item) return;
+  var nama = item.nama;
+  document.getElementById('p4d-dd').classList.remove('open');
+  document.getElementById('p4d-search').value = nama;
+  document.getElementById('p4d-sx').classList.add('show');
+  document.getElementById('p4d-sel-txt').textContent = nama+' — seluruh riwayat ('+item.jumlah+' laporan)';
+  document.getElementById('p4d-sel-bar').classList.add('show');
+  p4dMode = 'search';
+  // Panggil getAllLaporanPasien — baca SEMUA baris, tanpa batas tanggal/row
+  document.getElementById('p4d-cnt').textContent='Memuat seluruh riwayat '+nama+'…';
+  document.getElementById('p4d-loader').style.display='block';
+  document.getElementById('p4d-content').innerHTML='';
+  loading(true);
+  google.script.run
+    .withSuccessHandler(function(raw){
+      loading(false);
+      document.getElementById('p4d-loader').style.display='none';
+      try {
+        var laps=JSON.parse(raw);
+        if(!laps.length){
+          document.getElementById('p4d-cnt').textContent='Tidak ada laporan untuk '+nama;
+          document.getElementById('p4d-content').innerHTML='<div class="p4d-empty">📭 Tidak ada laporan</div>';
+          return;
+        }
+        document.getElementById('p4d-cnt').textContent=laps.length+' laporan · seluruh riwayat · '+nama;
+        document.getElementById('p4d-print-sub').textContent=
+          nama+' · Seluruh riwayat · Dicetak: '+fmtDMY(ymd(new Date()));
+        document.getElementById('p4d-content').innerHTML=p4dBuildSeksi(nama,laps);
+      } catch(e){ p4dShowErr(String(e)); }
+    })
+    .withFailureHandler(function(e){ loading(false); p4dShowErr(e&&e.message?e.message:String(e)); })
+    .getAllLaporanPasien(nama);
+}
+
+function p4dSearchClear() {
+  p4dSearchRes=[];
+  document.getElementById('p4d-search').value='';
+  document.getElementById('p4d-sx').classList.remove('show');
+  document.getElementById('p4d-dd').classList.remove('open');
+  document.getElementById('p4d-sel-bar').classList.remove('show');
+  if(p4dMode==='search'){ p4dMode='hari'; p4dLoadHariIni(); }
+}
+
+document.addEventListener('click',function(e){
+  var inner=document.querySelector('.p4d-search-inner');
+  if(inner&&!inner.contains(e.target)) document.getElementById('p4d-dd').classList.remove('open');
+});
+
+// ── Helpers ──────────────────────────────────────────
+function p4dShowLoader(){
+  document.getElementById('p4d-cnt').textContent='Memuat…';
+  document.getElementById('p4d-loader').style.display='block';
+  document.getElementById('p4d-content').innerHTML='';
+  loading(true);
+}
+function p4dShowErr(msg){
+  document.getElementById('p4d-cnt').textContent='Error';
+  document.getElementById('p4d-loader').style.display='none';
+  document.getElementById('p4d-content').innerHTML='<div class="p4d-err">⚠ '+esc(msg)+'</div>';
+}
+
+function p4dBuildSeksi(namaP, laps) {
+  var html='<div class="p4d-patient-sec">'
+    +'<div class="p4d-patient-hdr">'
+      +'<span class="p4d-pnm">'+esc(namaP)+'</span>'
+      +'<span class="p4d-pcnt">'+laps.length+' laporan</span>'
+    +'</div><div class="p4d-grid">';
+  laps.forEach(function(r){
+    var sc=(r.shift||'').toLowerCase();
+    var cls='p4d-'+(sc==='pagi'?'pagi':sc==='sore'?'sore':'malam');
+    var alat=(r.alatmedik||'').split(';').filter(Boolean);
+    var alatH=alat.length?'<div class="p4d-chips">'+alat.map(function(a){return'<span class="p4d-chip">'+esc(a)+'</span>';}).join('')+'</div>':'';
+    html+='<div class="p4d-card '+cls+'">'
+      +'<div class="p4d-ch"><div class="p4d-ch-left">'
+        +'<span class="p4d-shift">'+esc(r.shift||'')+'</span>'
+        +'<span class="p4d-date">'+esc(r.tanggal||'')+'</span>'
+      +'</div><span class="sh-no" onclick="goToLap('+Number(r.nomor||0)+')">#'+esc(String(r.nomor||''))+'</span></div>'
+      +'<div class="p4d-cb">'
+        +p4dFrow3('Bed',r.bed,'Hari ke',r.harike,'Jaminan',r.jaminan)
+        +p4dFrow2('Umur',r.umur,'Agama',r.agama)
+        +p4dFrow1('DPJP',r.dpjp)
+        +p4dFrow1('Konsulen',r.dpjplain)
+        +p4dFrow1('PJ',r.pj)
+        +p4dFrow1('PP',r.pp)
+        +alatH+'<hr class="p4d-sep">'
+        +(r.diagnosis?'<div class="p4d-diag">'+esc(String(r.diagnosis))+'</div>':'')
+        +(r.laporan?'<div class="p4d-lap">'+esc(String(r.laporan))+'</div>':'<span class="no-lap4">Isi laporan kosong</span>')
+      +'</div></div>';
+  });
+  return html+'</div></div>';
+}
+// Satu field: label + titik-dua + nilai dalam grid 3-kolom internal
+function fi(lbl,val){
+  if(!val&&val!==0) return'<div class="p4d-fi"></div>';
+  return'<div class="p4d-fi">'
+    +'<span class="p4d-fl">'+lbl+'</span>'
+    +'<span class="p4d-fc">:</span>'
+    +'<span class="p4d-fv">'+esc(String(val))+'</span>'
+    +'</div>';
+}
+// Baris 1 field (DPJP, Konsulen, PJ, PP)
+function p4dFrow1(l,v){
+  if(!v&&v!==0)return'';
+  return'<div class="p4d-frow col1">'+fi(l,v)+'</div>';
+}
+// Baris 2 field: Umur span 2 kolom, Agama di kolom 3 (sejajar Jaminan)
+function p4dFrow2(l1,v1,l2,v2){
+  if(!v1&&!v2&&v1!==0&&v2!==0)return'';
+  var umur=v1?'<div class="p4d-fi" style="grid-column:span 2">'
+    +'<span class="p4d-fl">'+l1+'</span>'
+    +'<span class="p4d-fc">:</span>'
+    +'<span class="p4d-fv">'+esc(String(v1))+'</span>'
+    +'</div>':'<div style="grid-column:span 2"></div>';
+  return'<div class="p4d-frow col3">'+umur+fi(l2,v2)+'</div>';
+}
+// Baris 3 field (Bed + Hari ke + Jaminan)
+function p4dFrow3(l1,v1,l2,v2,l3,v3){
+  if(!v1&&!v2&&!v3&&v1!==0&&v2!==0&&v3!==0)return'';
+  return'<div class="p4d-frow col3">'+fi(l1,v1)+fi(l2,v2)+fi(l3,v3)+'</div>';
+}
+function p4dRow(lbl,val){
+  if(!val&&val!==0)return'';
+  return'<div class="p4d-frow col1">'+fi(lbl,val)+'</div>';
+}
+function goToLap(n){gotoPage('p5',{viewNomor:n});}
+</script>
