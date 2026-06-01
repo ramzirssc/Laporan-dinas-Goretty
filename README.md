@@ -169,6 +169,9 @@ Membaca kolom A sekaligus, mengembalikan nomor baris aktual (1-based) untuk nomo
 
 ## 6. Update Inline dari Page3 (`updateLaporan`)
 
+ada tombol refresh terletak sebelah kanan tombol "Cetak PDF", tetap satu baris. 
+Kolomg Diagnosis dan kolom isi laporan bisa diedit, jika user klik tombol edit, dan keduanya harus bisa disave, jika user klik simpan, bukan hanya salah satu yang disimpan. Ukuran textbox nya hampir setinggi baris pasien tersebut, dan tinggi kolom diagnosis dan isi laporan adalah sama. 
+
 Page3 mengedit **diagnosis (kolom G)** dan **isi laporan (kolom H)** secara inline.
 
 `updateLaporan(nomor, isiLaporan, diagnosis)`:
