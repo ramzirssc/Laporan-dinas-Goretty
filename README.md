@@ -16,7 +16,7 @@ Tujuan utama sistem: pencatatan untuk **audit, surveilans, penelitian, dan stati
 |---|---|
 | `code.gs` | Seluruh logika server (Apps Script) |
 | `index.html` | Shell SPA: topbar, router antar-halaman, util global (`esc`, `ymd`, `fmtDMY`, `toast`, `loading`, `errH`, `gotoPage`) |
-| `page1.html` | Daftar pasien hari ini; klik shift → buat laporan baru |
+| `page1.html` | Daftar pasien hari ini; klik shift → buat laporan baru, jika shift sudah ada nomor laporan jika diklik --> buka laporan tersebut |
 | `page2.html` | Input/keluar pasien |
 | `page3.html` | Lihat laporan (tabel, filter, edit inline diagnosis+laporan, cetak) |
 | `page4.html` | Operan dinas (kartu per pasien; cari seluruh riwayat termasuk arsip) |
@@ -138,7 +138,7 @@ Fungsi ini tahan terhadap (a) ArrayFormula yang menggembungkan `getLastRow()`, d
 ---
 
 ## 5. Anti-Duplikat & Penyimpanan Aman (`simpandisheet`) — KRUSIAL
-
+Metode pencarian dengan metode tanggal (by default tanggal hari ini), nama pasien, dan shift (by default pagi), sekali servercall saat load webapp, selama tanggal tidak diubah, maka sambil se mua laporan pada tanggal tersebut)
 Mencegah dua laporan dengan kombinasi **pasien + tanggal + shift** yang sama (dan mencegah dua baris bernomor sama). Ini penting untuk de-duplikasi arsip dan keandalan statistik.
 
 ### Penyebab bug "laporan dobel" (sudah diperbaiki)
