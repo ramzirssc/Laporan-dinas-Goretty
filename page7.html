@@ -1,0 +1,189 @@
+<!-- PAGE 7: PERMINTAAN DINAS -->
+<style>
+  .p7-layout{display:grid;grid-template-columns:1fr 2fr;gap:12px;
+    height:calc(100vh - var(--topbar-h) - 28px)}
+  .p7-form-panel{display:flex;flex-direction:column;height:100%;
+    background:var(--surface);border:1px solid var(--border-soft);
+    border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden}
+  .p7-panel-title{padding:9px 13px;background:#1e3f62;color:#fff;
+    font-family:var(--serif);font-size:13px;font-style:italic;font-weight:600;flex-shrink:0}
+  .p7-form-panel iframe{flex:1;border:none;width:100%}
+  .p7-tbl-panel{display:flex;flex-direction:column;overflow:hidden}
+  .p7-filter{background:var(--surface);border:1px solid var(--border-soft);
+    border-radius:var(--radius-lg) var(--radius-lg) 0 0;padding:10px 13px;border-bottom:none;
+    display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;flex-shrink:0}
+  .ff7{display:flex;flex-direction:column;gap:3px}
+  .ff7 label{font-size:10px;font-weight:700;text-transform:uppercase;
+    letter-spacing:.08em;color:var(--muted)}
+  .ff7 input{height:36px;padding:0 8px;font-size:12px;border:1px solid var(--border);
+    border-radius:var(--radius-sm);background:var(--field-active-bg);
+    color:var(--field-active-text);-webkit-appearance:none;appearance:none}
+  .ff7 input:focus{outline:none;border-color:var(--blue-focus);box-shadow:0 0 0 3px var(--blue-lt)}
+  .p7-cnt{font-size:11.5px;color:var(--muted);font-style:italic;padding:4px 13px;
+    background:var(--surface2);border:1px solid var(--border-soft);
+    border-top:none;border-bottom:none;flex-shrink:0}
+  .p7-scroll{flex:1;overflow-y:auto;overflow-x:auto;background:var(--surface);
+    border:1px solid var(--border-soft);border-top:none;
+    border-radius:0 0 var(--radius-lg) var(--radius-lg);box-shadow:var(--shadow)}
+  .p7-tbl{width:100%;border-collapse:collapse;font-size:11.5px;min-width:600px}
+  .p7-tbl thead{position:sticky;top:0;z-index:10}
+  .p7-tbl thead tr{background:#1e3f62 !important}
+  .p7-tbl thead tr th{background:#1e3f62 !important;color:#fff !important;
+    padding:8px 9px;font-size:10px;font-weight:700;text-transform:uppercase;
+    letter-spacing:.04em;text-align:left;white-space:nowrap;
+    border-right:1px solid rgba(255,255,255,.1)}
+  .p7-tbl thead tr th:last-child{border-right:none}
+  .p7-tbl tbody tr{border-bottom:1px solid var(--border-soft);background:var(--surface)}
+  .p7-tbl tbody tr:hover{background:var(--blue-lt) !important}
+  .p7-tbl tbody td{padding:7px 9px;vertical-align:top;font-size:11.5px;
+    word-wrap:break-word;white-space:normal;line-height:1.4;
+    border-right:1px solid var(--border-soft)}
+  .p7-tbl tbody td:last-child{border-right:none}
+  .p7-tbl tbody td.nm{color:var(--muted);font-size:11px}
+  .j-ok {display:inline-block;padding:2px 7px;border-radius:9px;font-size:10.5px;
+    font-weight:700;background:var(--ok-lt);color:var(--ok);border:1px solid var(--ok)}
+  .j-no {display:inline-block;padding:2px 7px;border-radius:9px;font-size:10.5px;
+    font-weight:700;background:var(--warn-lt);color:var(--warn);border:1px solid var(--warn)}
+  .j-btl{display:inline-block;padding:2px 7px;border-radius:9px;font-size:10.5px;
+    font-weight:700;background:#fff0e8;color:#7a2800;border:1px solid #c94a14}
+  .j-pnd{display:inline-block;padding:2px 7px;border-radius:9px;font-size:10.5px;
+    font-weight:700;background:#fff7e6;color:#7a4e00;border:1px solid #e09500}
+  .p7-loader{text-align:center;padding:24px;color:var(--muted);font-size:12px}
+  .p7-err   {text-align:center;padding:24px;color:var(--warn);font-size:12px}
+  .p7-empty {text-align:center;padding:32px;color:var(--muted);font-size:12px}
+  @media(max-width:900px){
+    .p7-layout{grid-template-columns:1fr;height:auto;gap:12px}
+    .p7-form-panel{height:60vh}
+    .p7-tbl-panel{min-height:300px}
+  }
+  @media(max-width:480px){
+    .p7-form-panel{height:65vh}
+    .p7-filter{padding:8px 10px;gap:6px}
+  }
+</style>
+
+<div class="p7-layout">
+  <!-- Form kiri -->
+  <div class="p7-form-panel">
+    <div class="p7-panel-title">📋 Form Permintaan Dinas</div>
+    <iframe
+      src="https://docs.google.com/forms/d/e/1FAIpQLSfRuGjlfbXefbJbVUF2zfecEZxqn0bPwgkKunwKsLDeR-EzTg/viewform?embedded=true"
+      allow="*" referrerpolicy="no-referrer">
+    </iframe>
+  </div>
+
+  <!-- Tabel kanan -->
+  <div class="p7-tbl-panel">
+    <div class="p7-filter">
+      <div class="ff7"><label>Tgl Mulai ≥</label>
+        <input type="date" id="p7-dari" style="width:126px"></div>
+      <div class="ff7" style="justify-content:flex-end;padding-bottom:5px">
+        <span style="font-size:11px;color:var(--muted)">s/d</span></div>
+      <div class="ff7"><label>Tgl Mulai ≤</label>
+        <input type="date" id="p7-sampai" style="width:126px"></div>
+      <div style="display:flex;gap:6px;align-items:flex-end">
+        <button class="btn btn-primary" onclick="p7Cari()"
+          style="height:36px;font-size:12px">🔍 Cari</button>
+        <button class="btn btn-ghost"   onclick="p7Reset()"
+          style="height:36px;font-size:12px">Reset</button>
+      </div>
+    </div>
+    <div class="p7-cnt" id="p7-cnt">Memuat…</div>
+    <div class="p7-scroll">
+      <div class="p7-loader" id="p7-loader">Memuat data…</div>
+      <table class="p7-tbl" id="p7-tbl" style="display:none">
+        <thead><tr>
+          <th style="width:32px">No.</th>
+          <th style="width:95px">Timestamp</th>
+          <th style="width:200px">Nama</th>
+          <th style="width:80px">Tgl Mulai</th>
+          <th style="width:80px">Tgl Selesai</th>
+          <th style="width:95px">Jenis</th>
+          <th style="width:78px">Jawaban</th>
+          <th>Alasan Ditolak</th>
+        </tr></thead>
+        <tbody id="p7-tbody"></tbody>
+      </table>
+      <div class="p7-empty" id="p7-empty" style="display:none">📭 Tidak ada data</div>
+      <div class="p7-err"   id="p7-err"   style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+function initP7(){
+  var today=new Date(), sixM=new Date();
+  sixM.setMonth(today.getMonth()+6);
+  document.getElementById('p7-dari').value  =ymd(today);
+  document.getElementById('p7-sampai').value=ymd(sixM);
+  p7Cari();
+}
+
+function p7Cari(){
+  var tm=document.getElementById('p7-dari').value;
+  var ta=document.getElementById('p7-sampai').value;
+  document.getElementById('p7-cnt').textContent='Memuat…';
+  document.getElementById('p7-loader').style.display='block';
+  document.getElementById('p7-tbl').style.display='none';
+  document.getElementById('p7-empty').style.display='none';
+  document.getElementById('p7-err').style.display='none';
+  google.script.run
+    .withSuccessHandler(p7Render)
+    .withFailureHandler(function(e){
+      document.getElementById('p7-loader').style.display='none';
+      document.getElementById('p7-err').style.display='block';
+      document.getElementById('p7-err').textContent='⚠ '+(e.message||e);
+    })
+    .getDaftarDinas(tm,ta);
+}
+
+function p7Render(raw){
+  var obj=JSON.parse(raw);
+  document.getElementById('p7-loader').style.display='none';
+  if(obj.error){
+    document.getElementById('p7-err').style.display='block';
+    document.getElementById('p7-err').textContent='⚠ '+obj.error;
+    document.getElementById('p7-cnt').textContent='Gagal memuat';return;
+  }
+  var rows=obj.rows, n=rows.length;
+  document.getElementById('p7-cnt').textContent=n>0?n+' data ditemukan':'0 data ditemukan';
+  if(!n){document.getElementById('p7-empty').style.display='block';return;}
+  document.getElementById('p7-tbl').style.display='table';
+  var tbody=document.getElementById('p7-tbody');
+  tbody.innerHTML='';
+  var todayStr=ymd(new Date());
+  rows.forEach(function(r){
+    var tr=document.createElement('tr');
+    if(r.tglMulaiRaw===todayStr)tr.style.background='#fffde7';
+    var jwb=String(r.jawaban||'').toLowerCase();
+    var jwbH=
+      jwb.includes('setuju')||jwb.includes('approved')
+        ?'<span class="j-ok">'+esc(r.jawaban)+'</span>'
+      :jwb.includes('tolak')||jwb.includes('reject')
+        ?'<span class="j-no">'+esc(r.jawaban)+'</span>'
+      :jwb.includes('batal')||jwb.includes('cancel')
+        ?'<span class="j-btl">'+esc(r.jawaban)+'</span>'
+      :r.jawaban
+        ?'<span class="j-pnd">'+esc(r.jawaban)+'</span>'
+        :'<span class="nm">—</span>';
+    tr.innerHTML=
+      '<td class="nm">'+r.nomor+'</td>'+
+      '<td class="nm" style="font-size:10.5px">'+esc(r.timestamp)+'</td>'+
+      '<td><strong>'+esc(r.nama)+'</strong></td>'+
+      '<td>'+esc(r.tglMulai)+'</td>'+
+      '<td class="nm">'+esc(r.tglSelesai)+'</td>'+
+      '<td class="nm">'+esc(r.jenis)+'</td>'+
+      '<td>'+jwbH+'</td>'+
+      '<td class="nm">'+esc(r.alasan)+'</td>';
+    tbody.appendChild(tr);
+  });
+}
+
+function p7Reset(){
+  var today=new Date(), sixM=new Date();
+  sixM.setMonth(today.getMonth()+6);
+  document.getElementById('p7-dari').value  =ymd(today);
+  document.getElementById('p7-sampai').value=ymd(sixM);
+  p7Cari();
+}
+</script>
