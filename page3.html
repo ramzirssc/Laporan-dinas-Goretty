@@ -1,0 +1,313 @@
+<!-- PAGE 3: LIHAT LAPORAN -->
+<style>
+  .p3-outer{display:flex;flex-direction:column;height:calc(100vh - var(--topbar-h) - 28px);}
+  .p3-top{flex-shrink:0}
+  .p3f{background:var(--surface);border:1px solid var(--border-soft);
+    border-radius:var(--radius-lg) var(--radius-lg) 0 0;padding:11px 14px;border-bottom:none;}
+  .p3f-row{display:flex;align-items:flex-end;gap:9px;flex-wrap:wrap}
+  .ff{display:flex;flex-direction:column;gap:3px}
+  .ff label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+  .ff input,.ff select{height:36px;padding:0 8px;font-size:12.5px;border:1px solid var(--border);
+    border-radius:var(--radius-sm);background:var(--field-active-bg);color:var(--field-active-text);
+    -webkit-appearance:none;appearance:none;transition:border-color .18s,box-shadow .18s;}
+  .ff input:focus,.ff select:focus{outline:none;border-color:var(--blue-focus);box-shadow:0 0 0 3px var(--blue-lt);}
+  .p3-cnt{font-size:12px;color:var(--muted);font-style:italic;
+    padding:5px 14px;background:var(--surface2);
+    border:1px solid var(--border-soft);border-top:none;border-bottom:none;flex-shrink:0;}
+  .p3-scroll{flex:1;overflow-y:auto;overflow-x:auto;
+    background:var(--surface);border:1px solid var(--border-soft);
+    border-top:none;border-radius:0 0 var(--radius-lg) var(--radius-lg);box-shadow:var(--shadow);}
+  .p3t{width:100%;border-collapse:collapse;font-size:12.5px;table-layout:auto;min-width:900px}
+  .p3t thead{position:sticky;top:0;z-index:20}
+  .p3t thead tr{background:#1e3f62 !important}
+  .p3t thead tr th{background:#1e3f62 !important;color:#fff !important;
+    padding:9px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+    text-align:left;vertical-align:bottom;white-space:nowrap;
+    border-right:1px solid rgba(255,255,255,.1)}
+  .p3t thead tr th:last-child{border-right:none}
+  .p3t tbody tr.s-pagi{background:#d6f0dd}
+  .p3t tbody tr.s-sore{background:#fdf3c0}
+  .p3t tbody tr.s-malam{background:#f0f4fa}
+  .p3t tbody tr{border-bottom:1px solid var(--border-soft)}
+  .p3t tbody td{padding:10px 12px;vertical-align:top;
+    white-space:normal;word-wrap:break-word;word-break:break-word;line-height:1.6;
+    border-right:1px solid var(--border-soft);}
+  .p3t tbody td:last-child{border-right:none}
+  .tgl-grp td{background:#dce8f4 !important;color:var(--blue-dk);font-weight:700;font-size:12px;
+    letter-spacing:.03em;padding:5px 12px;border-bottom:2px solid var(--blue-mid) !important;cursor:default}
+  .stk{display:flex;flex-direction:column;gap:3px}
+  .sr{display:flex;gap:5px;align-items:baseline;font-size:12px;line-height:1.4}
+  .sl{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+    color:var(--muted);min-width:46px;flex-shrink:0}
+  .sv{color:var(--text)}.sv.b{font-weight:700;font-size:13px}.sv.s{color:var(--text-soft)}
+  .sb{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;white-space:nowrap}
+  .sb.pagi{background:#e6f7ec;color:#1a5c2e;border:1px solid #4caf73}
+  .sb.sore{background:#fff7e0;color:#7a5200;border:1px solid #e0a800}
+  .sb.malam{background:#e8eef6;color:#1a3a6a;border:1px solid #3a6ea8}
+  .chips{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px}
+  .chip{font-size:10px;padding:2px 7px;background:var(--blue-lt);color:var(--blue-dk);
+    border:1px solid var(--blue-mid);border-radius:9px;font-weight:600}
+  .lap-txt{font-size:12px;line-height:1.65;color:var(--text);white-space:pre-wrap;
+    word-wrap:break-word;word-break:break-word;}
+  .no-lap{color:var(--muted);font-style:italic;font-size:12px}
+  .nomor-cell{font-weight:800;font-size:13px;color:var(--blue);cursor:pointer;
+    white-space:nowrap;display:block}
+  .nomor-cell:hover{color:var(--blue-dk);text-decoration:underline}
+  /* Tombol Edit/Simpan kecil */
+  .btn-edit-sm{margin-top:5px;padding:3px 8px;font-size:10.5px;font-weight:600;
+    border-radius:4px;border:1px solid var(--border);background:var(--surface2);
+    color:var(--text-soft);cursor:pointer;display:block;width:100%;text-align:center;
+    transition:background .15s,color .15s}
+  .btn-edit-sm:hover{background:var(--blue-lt);color:var(--blue-dk);border-color:var(--blue)}
+  .btn-save-sm{margin-top:3px;padding:3px 8px;font-size:10.5px;font-weight:600;
+    border-radius:4px;border:1px solid var(--ok);background:var(--ok-lt);
+    color:var(--ok);cursor:pointer;display:block;width:100%;text-align:center;
+    transition:background .15s,color .15s}
+  .btn-save-sm:hover{background:var(--ok);color:#fff}
+  .lap-edit-ta{width:100%;min-height:120px;font-size:12px;line-height:1.65;
+    font-family:var(--sans);padding:7px 9px;border:1.5px solid var(--blue-focus);
+    border-radius:var(--radius-sm);resize:vertical;background:var(--field-active-bg);
+    color:var(--field-active-text);}
+  .lap-edit-ta:focus{outline:none;box-shadow:0 0 0 3px var(--blue-lt)}
+  .p3-loader{text-align:center;padding:28px;color:var(--muted)}
+  .p3-empty{text-align:center;padding:40px;color:var(--muted)}
+
+  /* ── PRINT ── */
+  .p3-print-header{display:none;margin-bottom:10pt;padding-bottom:6pt;
+    border-bottom:1pt solid #c8d4e3}
+  .p3-print-header h1{font-size:14pt;font-weight:700;color:#1e3f62}
+  .p3-print-header p{font-size:10pt;color:#555;margin-top:3pt}
+  @media print{
+    .topbar,.p3-top{display:none !important}
+    .p3-outer{height:auto !important;display:block !important}
+    .p3-scroll{overflow:visible !important;border:none !important;
+      border-radius:0 !important;box-shadow:none !important;height:auto !important}
+    .p3-print-header{display:block !important}
+    .p3t{font-size:9pt !important;min-width:unset !important}
+    .p3t thead tr th{padding:5pt 7pt !important;font-size:8pt !important}
+    .p3t tbody td{padding:5pt 7pt !important;font-size:9pt !important}
+    .p3t tbody tr.s-pagi{background:#d6f0dd !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .p3t tbody tr.s-sore{background:#fdf3c0 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .p3t tbody tr.s-malam{background:#f0f4fa !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .tgl-grp td{background:#dce8f4 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .chip{background:#ddeaf8 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .nomor-cell{color:#274f7c !important}
+    body{background:#fff !important}
+    .btn-edit-sm,.btn-save-sm{display:none !important}
+  }
+
+  @media(max-width:767px){
+    .p3-outer{height:calc(100vh - var(--topbar-h) - 20px);}
+    .p3f{padding:9px 10px}.p3f-row{gap:7px}
+    .ff input,.ff select{height:40px;font-size:12px}
+  }
+</style>
+
+<div class="p3-outer">
+  <div class="p3-top">
+    <div class="p3f">
+      <div class="p3f-row">
+        <div class="ff"><label>Dari</label><input type="date" id="f-dari" style="width:132px"></div>
+        <div class="ff" style="justify-content:flex-end;padding-bottom:5px">
+          <span style="font-size:12px;color:var(--muted)">s/d</span></div>
+        <div class="ff"><label>Sampai</label><input type="date" id="f-sampai" style="width:132px"></div>
+        <div class="ff"><label>Shift</label>
+          <select id="f-shift" style="width:90px">
+            <option value="">Semua</option><option>Pagi</option><option>Sore</option><option>Malam</option>
+          </select></div>
+        <div class="ff" style="flex:2;min-width:135px"><label>Nama Pasien</label>
+          <select id="f-nama"><option value="">— Semua —</option></select></div>
+        <div class="ff" style="flex:2;min-width:135px"><label>Perawat PJ</label>
+          <select id="f-pj"><option value="">— Semua —</option><?!=opsiperawat?></select></div>
+        <div class="ff" style="flex:2;min-width:135px"><label>Perawat PP</label>
+          <select id="f-pp"><option value="">— Semua —</option><?!=opsiperawat?></select></div>
+        <div style="display:flex;gap:7px;align-items:flex-end">
+          <button class="btn btn-primary" onclick="p3Cari()">🔍 Cari</button>
+          <button class="btn btn-ghost"   onclick="p3Reset()">Reset</button>
+          <button class="btn btn-outline" onclick="p3Cetak()" style="gap:5px">🖨 Cetak PDF</button>
+        </div>
+      </div>
+    </div>
+    <div class="p3-cnt" id="p3-cnt">Memuat…</div>
+  </div>
+  <div class="p3-scroll" id="p3-scroll-area">
+    <!-- Header cetak: tersembunyi di layar, muncul saat print -->
+    <div class="p3-print-header" id="p3-print-header">
+      <h1>Lihat Laporan — IPI Damianus RS St. Carolus</h1>
+      <p id="p3-print-sub"></p>
+    </div>
+    <div class="p3-loader" id="p3-loader">Memuat laporan…</div>
+    <table class="p3t" id="p3-tbl" style="display:none">
+      <thead><tr>
+        <th style="width:80px">Nomor</th>
+        <th style="width:170px">Tanggal &amp; Petugas</th>
+        <th style="width:180px">Pasien</th>
+        <th style="width:225px">Diagnosis</th>
+        <th style="min-width:290px">Laporan</th>
+        <th style="width:205px">DPJP &amp; Konsulen</th>
+      </tr></thead>
+      <tbody id="p3-tbody"></tbody>
+    </table>
+    <div class="p3-empty" id="p3-empty" style="display:none">📭 Tidak ada laporan yang cocok</div>
+  </div>
+</div>
+
+<script>
+var p3c=[];
+function initP3(){
+  var today=new Date(),tiga=new Date();tiga.setDate(today.getDate()-2);
+  document.getElementById('f-dari').value  =ymd(tiga);
+  document.getElementById('f-sampai').value=ymd(today);
+  document.getElementById('f-dari').addEventListener('change',updNama);
+  document.getElementById('f-sampai').addEventListener('change',updNama);
+  updNama();p3Cari();
+}
+function updNama(){
+  var tm=document.getElementById('f-dari').value,ta=document.getElementById('f-sampai').value;
+  google.script.run.withSuccessHandler(function(r){
+    var list=JSON.parse(r),sel=document.getElementById('f-nama'),cur=sel.value;
+    sel.innerHTML='<option value="">— Semua —</option>';
+    list.forEach(function(n){var o=document.createElement('option');o.value=n;o.textContent=n;if(n===cur)o.selected=true;sel.appendChild(o);});
+  }).withFailureHandler(function(){}).getNamaPasienDalamRentang(tm,ta);
+}
+function p3Cari(){
+  var f={tglMulai:document.getElementById('f-dari').value,tglAkhir:document.getElementById('f-sampai').value,
+    shift:document.getElementById('f-shift').value,nama:document.getElementById('f-nama').value,
+    pj:document.getElementById('f-pj').value,pp:document.getElementById('f-pp').value};
+  document.getElementById('p3-cnt').textContent='Memuat…';
+  document.getElementById('p3-loader').style.display='block';
+  document.getElementById('p3-tbl').style.display='none';
+  document.getElementById('p3-empty').style.display='none';
+  document.getElementById('p3-scroll-area').scrollTop=0;
+  loading(true);
+  google.script.run.withSuccessHandler(renderP3).withFailureHandler(function(e){errH(e);loading(false);}).getLaporan(f);
+}
+function renderP3(raw){
+  loading(false);p3c=JSON.parse(raw);
+  document.getElementById('p3-loader').style.display='none';
+  var n=p3c.length;
+  var dari=document.getElementById('f-dari').value,sampe=document.getElementById('f-sampai').value;
+  var rng=(dari&&sampe)?fmtDMY(dari)+' – '+fmtDMY(sampe):'3 hari terakhir';
+  document.getElementById('p3-cnt').textContent=n>0?'Ditemukan '+n+' laporan ('+rng+')':'0 laporan ('+rng+')';
+  if(!n){document.getElementById('p3-empty').style.display='block';return;}
+  document.getElementById('p3-tbl').style.display='table';
+  var tbody=document.getElementById('p3-tbody');tbody.innerHTML='';
+  var lastTgl=null;
+  p3c.forEach(function(r){
+    if(r.tglRaw!==lastTgl){
+      var g=document.createElement('tr');g.className='tgl-grp';
+      g.innerHTML='<td colspan="6">📅 '+esc(r.tanggal)+'</td>';
+      tbody.appendChild(g);lastTgl=r.tglRaw;
+    }
+    var sc=(r.shift||'').toLowerCase();
+    var rowCls='s-'+(sc==='pagi'?'pagi':sc==='sore'?'sore':'malam');
+    var tr=document.createElement('tr');tr.className=rowCls;
+
+    // Kolom Nomor + tombol Edit / Simpan
+    var t1=document.createElement('td');
+    t1.innerHTML=
+      '<span class="nomor-cell" onclick="editLap('+r.nomor+')">#'+r.nomor+'</span>'+
+      '<button class="btn-edit-sm" id="p3-edit-'+r.nomor+'" onclick="p3StartEdit('+r.nomor+')">✏ Edit</button>'+
+      '<button class="btn-save-sm" id="p3-save-'+r.nomor+'" onclick="p3SaveEdit('+r.nomor+')" style="display:none">✓ Simpan</button>';
+    tr.appendChild(t1);
+
+    var t2=document.createElement('td');
+    t2.innerHTML='<div class="stk">'+strow('',r.tanggal,'b')+
+      '<div class="sr"><span class="sb '+sc+'">'+esc(r.shift||'')+'</span></div>'+
+      strow('Bed',r.bed)+strow('Hari ke',r.harike)+strow('PJ',r.pj,'s')+strow('PP',r.pp,'s')+'</div>';
+    tr.appendChild(t2);
+
+    var alat=(r.alatmedik||'').split(';').filter(Boolean);
+    var alatH=alat.length?'<div class="chips">'+alat.map(function(a){return'<span class="chip">'+esc(a)+'</span>';}).join('')+'</div>':'';
+    var t3=document.createElement('td');
+    t3.innerHTML='<div class="stk"><div class="sr"><span class="sv b">'+esc(r.pasien||'')+'</span></div>'+
+      strow('Umur',r.umur)+strow('Agama',r.agama)+strow('Jaminan',r.jaminan)+
+      (alatH?'<div style="margin-top:3px">'+alatH+'</div>':'')+'</div>';
+    tr.appendChild(t3);
+
+    var t4=document.createElement('td');
+    t4.innerHTML=r.diagnosis?'<div class="lap-txt">'+esc(r.diagnosis)+'</div>':'<span class="no-lap">—</span>';
+    tr.appendChild(t4);
+
+    // Kolom Laporan — diberi id untuk inline edit
+    var t5=document.createElement('td');
+    t5.id='p3-lap-cell-'+r.nomor;
+    t5.setAttribute('data-raw',r.laporan||'');
+    t5.innerHTML=r.laporan?'<div class="lap-txt">'+esc(r.laporan)+'</div>':'<span class="no-lap">—</span>';
+    tr.appendChild(t5);
+
+    var t6=document.createElement('td');
+    t6.innerHTML='<div class="stk">'+strow('DPJP',r.dpjp,'s')+strow('Konsulen',r.dpjplain,'s')+'</div>';
+    tr.appendChild(t6);
+
+    tbody.appendChild(tr);
+  });
+}
+
+// ── Inline edit: hanya isi laporan ──
+function p3StartEdit(nomor){
+  var cell=document.getElementById('p3-lap-cell-'+nomor);
+  if(!cell)return;
+  var rawText=cell.getAttribute('data-raw')||'';
+  cell.innerHTML='<textarea class="lap-edit-ta" id="p3-ta-'+nomor+'">'+esc(rawText)+'</textarea>';
+  document.getElementById('p3-edit-'+nomor).style.display='none';
+  document.getElementById('p3-save-'+nomor).style.display='block';
+  var ta=document.getElementById('p3-ta-'+nomor);
+  if(ta){ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);}
+}
+
+function p3SaveEdit(nomor){
+  var ta=document.getElementById('p3-ta-'+nomor);
+  if(!ta)return;
+  var newText=ta.value;
+  loading(true);
+  google.script.run
+    .withSuccessHandler(function(){
+      loading(false);
+      var cell=document.getElementById('p3-lap-cell-'+nomor);
+      cell.setAttribute('data-raw',newText);
+      cell.innerHTML=newText?'<div class="lap-txt">'+esc(newText)+'</div>':'<span class="no-lap">—</span>';
+      document.getElementById('p3-edit-'+nomor).style.display='block';
+      document.getElementById('p3-save-'+nomor).style.display='none';
+      // Update data lokal
+      var rec=p3c.find(function(r){return r.nomor==nomor;});
+      if(rec)rec.laporan=newText;
+      toast('Laporan #'+nomor+' berhasil diperbarui.','ok');
+    })
+    .withFailureHandler(function(e){loading(false);errH(e);})
+    .updateLaporan(nomor,newText);
+}
+
+function p3Cetak(){
+  // Update info header cetak berdasarkan filter aktif
+  var dari  =document.getElementById('f-dari').value;
+  var sampai=document.getElementById('f-sampai').value;
+  var nama  =document.getElementById('f-nama').value;
+  var shift =document.getElementById('f-shift').value;
+  var pj    =document.getElementById('f-pj').value;
+  var pp    =document.getElementById('f-pp').value;
+  var parts=[];
+  if(dari&&sampai)parts.push(fmtDMY(dari)+' – '+fmtDMY(sampai));
+  if(shift) parts.push('Shift: '+shift);
+  if(nama)  parts.push('Pasien: '+nama);
+  if(pj)    parts.push('PJ: '+pj);
+  if(pp)    parts.push('PP: '+pp);
+  parts.push('Dicetak: '+fmtDMY(ymd(new Date())));
+  var sub=parts.join(' · ');
+  document.getElementById('p3-print-sub').textContent=sub+' ('+p3c.length+' laporan)';
+  window.print();
+}
+function strow(lbl,val,cls){
+  if(!val&&val!==0)return'';
+  return'<div class="sr">'+(lbl?'<span class="sl">'+lbl+'</span>':'')
+    +'<span class="sv '+(cls||'')+'">'+esc(String(val))+'</span></div>';
+}
+function editLap(n){gotoPage('p5',{viewNomor:n});}
+function p3Reset(){
+  var t=new Date(),ti=new Date();ti.setDate(t.getDate()-2);
+  document.getElementById('f-dari').value=ymd(ti);document.getElementById('f-sampai').value=ymd(t);
+  document.getElementById('f-shift').value='';document.getElementById('f-nama').value='';
+  document.getElementById('f-pj').value='';document.getElementById('f-pp').value='';
+  updNama();p3Cari();
+}
+</script>
