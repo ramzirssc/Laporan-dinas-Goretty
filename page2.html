@@ -1,0 +1,73 @@
+<!-- PAGE 2: INPUT PASIEN BARU / PASIEN KELUAR -->
+<style>
+  .p2-forms{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+    height:calc(100vh - var(--topbar-h) - 32px);
+  }
+  .form-frame{
+    display:flex;
+    flex-direction:column;
+    height:100%;
+    background:var(--surface);
+    border:1px solid var(--border-soft);
+    border-radius:var(--radius-lg);
+    box-shadow:var(--shadow);
+    overflow:hidden;
+  }
+  .form-frame-title{
+    padding:9px 14px;
+    background:#1e3f62;color:#fff;
+    font-family:var(--serif);font-size:13px;font-style:italic;font-weight:600;
+    flex-shrink:0;
+  }
+  .form-frame iframe{
+    flex:1;
+    border:none;
+    width:100%;
+  }
+
+  /* ═════ RESPONSIVE ═════ */
+  /* Tablet portrait & mobile: stack ke bawah */
+  @media (max-width:900px){
+    .p2-forms{
+      grid-template-columns:1fr;
+      height:auto;
+      gap:12px;
+    }
+    .form-frame{
+      height:65vh;
+    }
+  }
+  @media (max-width:480px){
+    .form-frame{
+      height:70vh;
+    }
+  }
+</style>
+
+<div class="p2-forms">
+  <div class="form-frame">
+    <div class="form-frame-title">📥 Input Pasien Baru</div>
+    <iframe
+      src="https://docs.google.com/forms/d/e/1FAIpQLScCi0V8W4H51HP7hpmZgsxJmsgsSegQ78TaPMId5I_auJpOEg/viewform?embedded=true"
+      allow="*"
+      referrerpolicy="no-referrer">
+    </iframe>
+  </div>
+  <div class="form-frame">
+    <div class="form-frame-title">📤 Pasien Keluar</div>
+    <iframe
+      src="https://docs.google.com/forms/d/e/1FAIpQLSc-sQTPf1C0QEk9laBJYEn7XzCxLx4Dd3jQqeB2vV-H49Dj5g/viewform?embedded=true"
+      allow="*"
+      referrerpolicy="no-referrer">
+    </iframe>
+  </div>
+</div>
+
+<script>
+function initP2(){
+  // iframe sudah dimuat otomatis
+}
+</script>
