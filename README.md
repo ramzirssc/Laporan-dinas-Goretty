@@ -206,12 +206,13 @@ Sisi client (page5, `p5AmbilDiagnosisSebelumnya`):
 Page8 membaca **sheet Pivot Diagnosis & Pivot Alat Medik** (bukan menghitung langsung dari Laporan), plus sheet **Merge** untuk metrik pasien (jaminan, DPJP, umur, lama rawat, dll).
 
 ### `refreshPivot()` — prinsip
-- Membaca **ws1 + file arsip** (digabung; anti-dobel via nomor unik). Karena membaca arsip juga, **angka pivot tetap utuh walau data lama sudah dihapus dari ws1.**
+- Membaca **ws1 **
 - Agregasi **per bulan** (`yyyy-MM`).
 - Hitung diagnosis & alat medik **hanya dari baris yang kolom R (DiagnosisEdited) terisi** → otomatis 1 pasien 1 hitungan.
 - Daftar diagnosis & alat yang dihitung: konstanta `DIAGNOSIS_LIST` dan `ALAT_LIST` di `code.gs`.
 - Output via `_tulisSheet_` (clearContents lalu tulis ulang header + data + baris TOTAL; format kolom bulan `yyyy-MM`; freeze baris 1).
 - Trigger harian `refreshPivot` jam 01:00 (`pasangTriggerMalam`).
+- Buatkan juga fungsi sekaligus yang membuat tabel pivotnya untuk diagnosis dan alat medik. 
 - `pulihkanPivot()` — fungsi sekali-jalan untuk menghitung ulang pivot dari ws1+arsip (pemulihan).
 
 > Desain "akumulatif dari arsip" ini wajib dipertahankan: pivot tidak boleh ter-reset hanya karena data dipindah ke arsip.
