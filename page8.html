@@ -1,0 +1,675 @@
+<!-- PAGE 8: STATISTIK -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<style>
+  .p8-wrap{padding-bottom:32px}
+
+  /* ── Header + filter tahun ── */
+  .p8-topbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
+    background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--radius-lg);
+    padding:12px 18px;margin-bottom:12px;box-shadow:var(--shadow)}
+  .p8-title{font-family:var(--serif);font-size:17px;font-weight:600;font-style:italic;color:var(--blue-dk)}
+  .p8-year-row{display:flex;align-items:center;gap:8px}
+  .p8-year-row label{font-size:11px;font-weight:700;text-transform:uppercase;
+    letter-spacing:.07em;color:var(--muted)}
+  .p8-year-row select{height:34px;padding:0 10px;font-size:13px;font-weight:600;
+    border:1px solid var(--border);border-radius:var(--radius-sm);
+    background:var(--field-active-bg);color:var(--field-active-text);
+    -webkit-appearance:none;appearance:none;cursor:pointer}
+  .p8-year-row select:focus{outline:none;border-color:var(--blue-focus);
+    box-shadow:0 0 0 3px var(--blue-lt)}
+
+  /* ── Status bar ── */
+  .p8-status{font-size:12px;color:var(--muted);font-style:italic;
+    padding:5px 14px;background:var(--surface2);
+    border:1px solid var(--border-soft);border-radius:var(--radius-sm);
+    margin-bottom:12px}
+
+  /* ── Cards umum ── */
+  .p8-card{background:var(--surface);border:1px solid var(--border-soft);
+    border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden}
+  .p8-card-hdr{padding:10px 14px;border-bottom:1px solid var(--border-soft);
+    background:var(--surface2);display:flex;align-items:center;justify-content:space-between}
+  .p8-card-title{font-size:12px;font-weight:700;color:var(--blue-dk);
+    text-transform:uppercase;letter-spacing:.06em}
+  .p8-card-sub{font-size:11px;color:var(--muted)}
+  .p8-card-body{padding:12px 14px}
+
+  /* ── Row chart atas (time series + jaminan) ── */
+  .p8-charts-row{display:grid;grid-template-columns:3fr 2fr;gap:12px;margin-bottom:12px}
+  .p8-chart-wrap{position:relative}
+
+  /* ── Range filter ── */
+  .p8-range-bar{background:var(--surface);border:1px solid var(--border-soft);
+    border-radius:var(--radius-lg);padding:10px 14px;margin-bottom:12px;
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap;box-shadow:var(--shadow)}
+  .p8-range-bar label{font-size:11px;font-weight:700;text-transform:uppercase;
+    letter-spacing:.07em;color:var(--muted);white-space:nowrap}
+  .p8-range-bar input[type="date"]{height:34px;padding:0 8px;font-size:12.5px;
+    border:1px solid var(--border);border-radius:var(--radius-sm);
+    background:var(--field-active-bg);color:var(--field-active-text);
+    -webkit-appearance:none;appearance:none}
+  .p8-range-bar input:focus{outline:none;border-color:var(--blue-focus);
+    box-shadow:0 0 0 3px var(--blue-lt)}
+  .p8-sep{color:var(--muted);font-size:13px;padding:0 2px}
+  .p8-range-info{font-size:11px;color:var(--muted);font-style:italic;margin-left:4px}
+
+  /* ── Grid bawah (4 panel) ── */
+  .p8-bottom-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;
+    grid-template-areas:'dpjp kondisi' 'umur jam-range' 'diag-r alat-r' 'lama lama'}
+  .p8-area-dpjp{grid-area:dpjp}
+  .p8-area-kondisi{grid-area:kondisi}
+  .p8-area-umur{grid-area:umur}
+  .p8-area-lama{grid-area:lama;grid-column:span 2}
+  .p8-area-jamrange{grid-area:jam-range}
+  .p8-area-diagr{grid-area:diag-r}
+  .p8-area-alatr{grid-area:alat-r}
+
+  /* ── Tabel statistik ── */
+  .p8-tbl{width:100%;border-collapse:collapse;font-size:12px}
+  .p8-tbl thead th{text-align:left;font-size:10px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
+    padding:4px 8px 6px;border-bottom:1px solid var(--border-soft)}
+  .p8-tbl tbody tr{border-bottom:0.5px solid var(--border-soft)}
+  .p8-tbl tbody tr:last-child{border-bottom:none}
+  .p8-tbl tbody tr:hover{background:var(--surface2)}
+  .p8-tbl td{padding:7px 8px;vertical-align:middle}
+  .p8-tbl td:last-child{white-space:nowrap}
+  .p8-bar-wrap{width:100%;background:var(--surface2);height:5px;
+    border-radius:3px;margin-top:3px}
+  .p8-bar-fill{height:5px;border-radius:3px;background:#3a6ea8;transition:width .4s}
+  .p8-dot{display:inline-block;width:8px;height:8px;border-radius:50%;
+    margin-right:6px;flex-shrink:0}
+  .p8-nodata{padding:20px;text-align:center;color:var(--muted);
+    font-style:italic;font-size:12px}
+
+  /* ── Metric cards ── */
+  .p8-metrics{display:flex;flex-direction:column;gap:8px;padding:4px 0}
+  .p8-metric-row{display:flex;align-items:baseline;justify-content:space-between;
+    padding:7px 0;border-bottom:0.5px solid var(--border-soft)}
+  .p8-metric-row:last-child{border-bottom:none}
+  .p8-metric-lbl{font-size:11px;color:var(--muted);text-transform:uppercase;
+    letter-spacing:.05em;font-weight:600}
+  .p8-metric-val{font-size:15px;font-weight:700;color:var(--blue-dk);text-align:right}
+  .p8-metric-big{font-size:26px;font-weight:700;color:var(--blue-dk);
+    text-align:center;padding:8px 0 4px}
+  .p8-metric-unit{font-size:12px;color:var(--muted);text-align:center;margin-bottom:8px}
+
+  /* ── Loading overlay ── */
+  .p8-loading-overlay{position:relative}
+  .p8-loading-overlay::after{content:'Memuat…';position:absolute;inset:0;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,.75);font-size:12px;color:var(--muted);
+    border-radius:var(--radius-lg)}
+
+  /* ── Responsive ── */
+  @media(max-width:1023px){
+    .p8-charts-row{grid-template-columns:1fr}
+    .p8-bottom-grid{grid-template-columns:1fr;
+      grid-template-areas:'dpjp' 'kondisi' 'jam-range' 'diag-r' 'alat-r' 'umur' 'lama'}
+    .p8-area-lama{grid-column:span 1}
+  }
+  @media(max-width:767px){
+    .p8-topbar{flex-direction:column;align-items:flex-start}
+    .p8-range-bar{gap:6px}
+  }
+</style>
+
+<div class="p8-wrap">
+
+  <!-- Top: judul + filter tahun -->
+  <div class="p8-topbar">
+    <div class="p8-title">📊 Statistik IPI Goretty</div>
+    <div class="p8-year-row">
+      <label>Tahun</label>
+      <select id="p8-tahun" onchange="p8OnYearChange()"></select>
+    </div>
+  </div>
+
+  <!-- Status -->
+  <div class="p8-status" id="p8-status">Memuat data statistik…</div>
+
+  <!-- Row atas: time series + jaminan (berdasarkan tahun) -->
+  <div class="p8-charts-row">
+    <div class="p8-card">
+      <div class="p8-card-hdr">
+        <span class="p8-card-title">Pasien Baru per Bulan</span>
+        <span class="p8-card-sub" id="p8-ts-sub"></span>
+      </div>
+      <div class="p8-card-body">
+        <div class="p8-chart-wrap" style="height:240px">
+          <canvas id="p8-ts-chart"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="p8-card">
+      <div class="p8-card-hdr">
+        <span class="p8-card-title">Distribusi Jaminan</span>
+        <span class="p8-card-sub" id="p8-jam-sub"></span>
+      </div>
+      <div class="p8-card-body" id="p8-jam-body">
+        <div class="p8-chart-wrap" style="height:240px">
+          <canvas id="p8-jam-chart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row kedua: diagnosis + alat medik (berdasarkan tahun) -->
+  <div class="p8-charts-row" style="margin-bottom:12px">
+    <div class="p8-card">
+      <div class="p8-card-hdr">
+        <span class="p8-card-title">Diagnosis Terbanyak</span>
+        <span class="p8-card-sub" id="p8-diagyr-sub"></span>
+      </div>
+      <div class="p8-card-body" style="max-height:280px;overflow-y:auto">
+        <div id="p8-diagyr-content"><div class="p8-nodata">Memuat…</div></div>
+      </div>
+    </div>
+    <div class="p8-card">
+      <div class="p8-card-hdr">
+        <span class="p8-card-title">Alat Medik Terbanyak</span>
+        <span class="p8-card-sub" id="p8-alatyr-sub"></span>
+      </div>
+      <div class="p8-card-body" style="max-height:280px;overflow-y:auto">
+        <div id="p8-alatyr-content"><div class="p8-nodata">Memuat…</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter range tanggal (untuk tabel di bawah) -->
+  <div class="p8-range-bar">
+    <label>Filter tabel (bulan berjalan):</label>
+    <input type="date" id="p8-dari" style="width:136px">
+    <span class="p8-sep">s/d</span>
+    <input type="date" id="p8-sampai" style="width:136px">
+    <button class="btn btn-primary" onclick="p8ApplyRange()"
+      style="height:34px;min-height:44px;font-size:12px">Terapkan</button>
+    <span class="p8-range-info" id="p8-range-info"></span>
+  </div>
+
+  <!-- Grid bawah: 4 panel -->
+  <div class="p8-bottom-grid">
+
+    <!-- DPJP -->
+    <div class="p8-card p8-area-dpjp">
+      <div class="p8-card-hdr">
+        <span class="p8-card-title">DPJP Terbanyak</span>
+        <span class="p8-card-sub" id="p8-dpjp-sub"></span>
+      </div>
+      <div class="p8-card-body">
+        <div id="p8-dpjp-content"><div class="p8-nodata">Memuat…</div></div>
+      </div>
+    </div>
+
+    <!-- Kondisi pindah -->
+    <div class="p8-card p8-area-kondisi">
+      <div class="p8-card-hdr">
+        <span class="p8-card-title">Kondisi Saat Pindah</span>
+        <span class="p8-card-sub" id="p8-kondisi-sub"></span>
+      </div>
+      <div class="p8-card-body">
+        <div id="p8-kondisi-content"><div class="p8-nodata">Memuat…</div></div>
+      </div>
+    </div>
+
+    <!-- Umur -->
+    <div class="p8-card p8-area-umur">
+      <div class="p8-card-hdr">
+        <span class="p8-card-title">Umur Saat Masuk</span>
+        <span class="p8-card-sub" id="p8-umur-sub"></span>
+      </div>
+      <div class="p8-card-body">
+        <div id="p8-umur-content"><div class="p8-nodata">Memuat…</div></div>
+      </div>
+    </div>
+
+    <!-- Jaminan per rentang tanggal -->
+    <div class="p8-card p8-area-jamrange">
+      <div class="p8-card-hdr">
+        <span class="p8-card-title">Distribusi Jaminan (Range)</span>
+        <span class="p8-card-sub" id="p8-jamrange-sub"></span>
+      </div>
+      <div class="p8-card-body">
+        <div id="p8-jamrange-content"><div class="p8-nodata">Memuat…</div></div>
+      </div>
+    </div>
+
+    <!-- Diagnosis range -->
+    <div class="p8-card p8-area-diagr">
+      <div class="p8-card-hdr">
+        <span class="p8-card-title">Diagnosis Terbanyak</span>
+        <span class="p8-card-sub" id="p8-diagr-sub"></span>
+      </div>
+      <div class="p8-card-body" style="max-height:260px;overflow-y:auto">
+        <div id="p8-diagr-content"><div class="p8-nodata">Memuat…</div></div>
+      </div>
+    </div>
+
+    <!-- Alat medik range -->
+    <div class="p8-card p8-area-alatr">
+      <div class="p8-card-hdr">
+        <span class="p8-card-title">Alat Medik Terbanyak</span>
+        <span class="p8-card-sub" id="p8-alatr-sub"></span>
+      </div>
+      <div class="p8-card-body" style="max-height:260px;overflow-y:auto">
+        <div id="p8-alatr-content"><div class="p8-nodata">Memuat…</div></div>
+      </div>
+    </div>
+
+    <!-- Lama rawat — span 2 kolom -->
+    <div class="p8-card p8-area-lama">
+      <div class="p8-card-hdr">
+        <span class="p8-card-title">Lama Perawatan</span>
+        <span class="p8-card-sub" id="p8-lama-sub"></span>
+      </div>
+      <div class="p8-card-body">
+        <div id="p8-lama-content"><div class="p8-nodata">Memuat…</div></div>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /p8-wrap -->
+
+<script>
+var p8Charts = {ts:null, jam:null};
+var p8CurData = null;
+
+// ── Init ─────────────────────────────────────────────
+function initP8() {
+  var curYear = new Date().getFullYear();
+  // Isi dropdown tahun (tahun berjalan ke belakang sampai 2024)
+  var sel = document.getElementById('p8-tahun');
+  sel.innerHTML = '';
+  for(var y = curYear; y >= 2024; y--) {
+    var o = document.createElement('option');
+    o.value = y; o.textContent = y;
+    if(y === curYear) o.selected = true;
+    sel.appendChild(o);
+  }
+  // Set range default tahun berjalan
+  p8SetRange(curYear);
+  // Load data
+  p8Load();
+}
+
+function p8SetRange(tahun) {
+  var curYear  = new Date().getFullYear();
+  var curMonth = new Date().getMonth() + 1; // 1-12
+  if(tahun === curYear) {
+    // Bulan berjalan: 1 bulan ini s/d hari ini
+    var mm = ('0' + curMonth).slice(-2);
+    document.getElementById('p8-dari').value   = tahun + '-' + mm + '-01';
+    document.getElementById('p8-sampai').value = ymd(new Date());
+  } else {
+    // Tahun lampau: tampilkan seluruh tahun
+    document.getElementById('p8-dari').value   = tahun + '-01-01';
+    document.getElementById('p8-sampai').value = tahun + '-12-31';
+  }
+}
+
+function p8OnYearChange() {
+  var tahun = parseInt(document.getElementById('p8-tahun').value);
+  p8SetRange(tahun);
+  p8Load();
+}
+
+function p8ApplyRange() {
+  p8Load();
+}
+
+// ── Fetch ─────────────────────────────────────────────
+function p8Load() {
+  var tahun  = parseInt(document.getElementById('p8-tahun').value);
+  var dari   = document.getElementById('p8-dari').value;
+  var sampai = document.getElementById('p8-sampai').value;
+  document.getElementById('p8-status').textContent = 'Menghubungi server…';
+  loading(true);
+  google.script.run
+    .withSuccessHandler(function(raw) {
+      loading(false);
+      try {
+        var obj = JSON.parse(raw);
+        if(obj.error) {
+          document.getElementById('p8-status').textContent = '⚠ ' + obj.error;
+          return;
+        }
+        p8CurData = obj;
+        p8Render(obj);
+      } catch(e) {
+        document.getElementById('p8-status').textContent = '⚠ Error: ' + String(e);
+      }
+    })
+    .withFailureHandler(function(e) {
+      loading(false);
+      document.getElementById('p8-status').textContent =
+        '⚠ Gagal: ' + (e&&e.message ? e.message : String(e));
+    })
+    .getStatistikPage8(tahun, dari, sampai);
+}
+
+// ── Render ────────────────────────────────────────────
+function p8Render(d) {
+  var dari   = fmtDMY(d.tglMulai);
+  var sampai = fmtDMY(d.tglAkhir);
+  document.getElementById('p8-status').textContent =
+    'Tahun ' + d.tahun + ' · Rentang: ' + dari + ' – ' + sampai +
+    ' · ' + d.rangeTotal + ' pasien';
+  document.getElementById('p8-range-info').textContent =
+    d.rangeTotal + ' pasien';
+
+  p8RenderTimeSeries(d.tahun, d.timeSeries);
+  p8RenderJaminan(d.jaminan, d.jaminanTotal, d.tahun);
+  p8RenderRankTable('p8-diagyr-content','p8-diagyr-sub', d.diagYear,  d.diagYearTotal,  'pasien th.'+d.tahun, 'Diagnosis');
+  p8RenderRankTable('p8-alatyr-content','p8-alatyr-sub', d.alatYear,  d.alatYearTotal,  'pasien th.'+d.tahun, 'Alat');
+  p8RenderDPJP(d.dpjp, d.rangeTotal);
+  p8RenderKondisi(d.kondisi, d.rangeTotal);
+  p8RenderJaminanRange(d.jaminanRange, d.rangeTotal);
+  p8RenderRankTable('p8-diagr-content','p8-diagr-sub',  d.diagRange, d.diagRangeTotal, 'pasien (range)', 'Diagnosis');
+  p8RenderRankTable('p8-alatr-content','p8-alatr-sub',  d.alatRange, d.alatRangeTotal, 'pasien (range)', 'Alat');
+  p8RenderUmur(d.umur);
+  p8RenderLama(d.lama);
+}
+
+// ── Time Series ───────────────────────────────────────
+function p8RenderTimeSeries(tahun, counts) {
+  var monthNames = ['Jan','Feb','Mar','Apr','Mei','Jun',
+                    'Jul','Agu','Sep','Okt','Nov','Des'];
+  var curYear = new Date().getFullYear();
+  var curMonth = new Date().getMonth(); // 0-based
+  // Tampilkan hanya s/d bulan berjalan jika tahun ini
+  var nMonths = (tahun === curYear) ? (curMonth + 1) : 12;
+  var labels = monthNames.slice(0, nMonths);
+  var data   = counts.slice(0, nMonths);
+  var trend  = p8Trend(data);
+
+  document.getElementById('p8-ts-sub').textContent =
+    'Total: ' + data.reduce(function(a,b){return a+b;}, 0) + ' pasien';
+
+  if(p8Charts.ts) { p8Charts.ts.destroy(); p8Charts.ts = null; }
+  var ctx = document.getElementById('p8-ts-chart').getContext('2d');
+  p8Charts.ts = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Pasien baru',
+          data: data,
+          borderColor: '#3a6ea8',
+          backgroundColor: 'rgba(58,110,168,0.1)',
+          borderWidth: 2.5,
+          pointRadius: 4,
+          pointBackgroundColor: '#3a6ea8',
+          pointHoverRadius: 6,
+          fill: true,
+          tension: 0.35
+        },
+        {
+          label: 'Trend',
+          data: trend,
+          borderColor: '#c0392b',
+          borderWidth: 1.5,
+          borderDash: [6,4],
+          pointRadius: 0,
+          fill: false,
+          tension: 0
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position:'top', labels:{font:{size:11}, boxWidth:14} },
+        tooltip: { mode:'index', intersect:false }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            precision: 0,
+            font: {size:11},
+            callback: function(v){ return Number.isInteger(v) ? v : ''; }
+          },
+          grid: { color:'rgba(0,0,0,.06)' }
+        },
+        x: { ticks:{font:{size:11}}, grid:{display:false} }
+      }
+    }
+  });
+}
+
+// Linear regression untuk trend line
+function p8Trend(data) {
+  var n = data.length;
+  if(n < 2) return data.map(function(v){ return v; });
+  var sumX=0, sumY=0, sumXY=0, sumX2=0;
+  data.forEach(function(v,i){ sumX+=i; sumY+=v; sumXY+=i*v; sumX2+=i*i; });
+  var denom = n*sumX2 - sumX*sumX;
+  if(denom === 0) return data.map(function(){ return Math.round(sumY/n*10)/10; });
+  var slope = (n*sumXY - sumX*sumY) / denom;
+  var intercept = (sumY - slope*sumX) / n;
+  return data.map(function(_,i){ return Math.round((slope*i+intercept)*10)/10; });
+}
+
+// ── Jaminan chart ─────────────────────────────────────
+function p8RenderJaminan(jaminan, total, tahun) {
+  document.getElementById('p8-jam-sub').textContent =
+    total + ' pasien th.' + tahun;
+  if(p8Charts.jam){ p8Charts.jam.destroy(); p8Charts.jam = null; }
+  if(!jaminan || !jaminan.length) {
+    document.getElementById('p8-jam-body').innerHTML =
+      '<div class="p8-nodata">Tidak ada data jaminan</div>';
+    return;
+  }
+  // Set tinggi chart dinamis berdasar jumlah item
+  var h = Math.max(200, jaminan.length * 38);
+  document.querySelector('#p8-jam-body .p8-chart-wrap').style.height = h + 'px';
+
+  var palette = ['#3a6ea8','#2e7d52','#c0392b','#b07d00','#5a6a82',
+                 '#7b3f9e','#c95b1a','#1a7a8a'];
+  var ctx = document.getElementById('p8-jam-chart').getContext('2d');
+  p8Charts.jam = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: jaminan.map(function(j){ return j.nama; }),
+      datasets: [{
+        data: jaminan.map(function(j){ return j.jumlah; }),
+        backgroundColor: jaminan.map(function(_,i){ return palette[i%palette.length]; }),
+        borderRadius: 4
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display:false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              var item = jaminan[ctx.dataIndex];
+              return ' ' + item.jumlah + ' pasien (' + item.persen + '%)';
+            }
+          }
+        }
+      },
+      scales: {
+        x: { beginAtZero:true, ticks:{precision:0,font:{size:11}},
+             grid:{color:'rgba(0,0,0,.06)'} },
+        y: { ticks:{font:{size:11}}, grid:{display:false} }
+      }
+    }
+  });
+}
+
+// ── DPJP table ────────────────────────────────────────
+function p8RenderDPJP(dpjp, total) {
+  var el = document.getElementById('p8-dpjp-content');
+  document.getElementById('p8-dpjp-sub').textContent =
+    'Top ' + Math.min(10, (dpjp||[]).length) + ' dari ' + total + ' pasien';
+  if(!dpjp || !dpjp.length) {
+    el.innerHTML = '<div class="p8-nodata">Tidak ada data</div>'; return;
+  }
+  var maxJ = dpjp[0].jumlah;
+  var html = '<table class="p8-tbl"><thead><tr>'
+    + '<th>DPJP</th><th style="text-align:right">Pasien</th>'
+    + '<th style="text-align:right">%</th></tr></thead><tbody>';
+  dpjp.slice(0,10).forEach(function(d) {
+    var barW = Math.round(d.jumlah / maxJ * 100);
+    html += '<tr><td style="max-width:200px">'
+      + '<div style="font-size:12px;color:var(--text)">' + esc(d.nama) + '</div>'
+      + '<div class="p8-bar-wrap"><div class="p8-bar-fill" style="width:' + barW + '%"></div></div>'
+      + '</td>'
+      + '<td style="text-align:right;font-weight:600;font-size:13px;padding-left:8px">' + d.jumlah + '</td>'
+      + '<td style="text-align:right;color:var(--muted);font-size:12px">' + d.persen + '%</td>'
+      + '</tr>';
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+// ── Kondisi pindah ────────────────────────────────────
+function p8RenderKondisi(kondisi, total) {
+  var el = document.getElementById('p8-kondisi-content');
+  document.getElementById('p8-kondisi-sub').textContent = total + ' pasien';
+  if(!kondisi || !kondisi.length) {
+    el.innerHTML = '<div class="p8-nodata">Tidak ada data</div>'; return;
+  }
+  var dotColors = {
+    'Meninggal':                '#c0392b',
+    'TTV Stabil nafas spontan': '#2e7d52',
+    'TTV stabil on ventilator': '#3a6ea8',
+    'TTV Stabil, nafas spontan':'#2e7d52',
+    'TTV stabil, on ventilator':'#3a6ea8',
+    'Pindah paksa':             '#e09500',
+    'Pindah Paksa':             '#e09500',
+    'Pulang paksa':             '#7b3f9e',
+    'Pulang Paksa':             '#7b3f9e'
+  };
+  var html = '<table class="p8-tbl"><thead><tr>'
+    + '<th>Kondisi</th><th style="text-align:right">Jumlah</th>'
+    + '<th style="text-align:right">%</th></tr></thead><tbody>';
+  kondisi.forEach(function(k) {
+    var col = dotColors[k.nama] || '#5a6a82';
+    html += '<tr><td style="display:flex;align-items:center;gap:6px">'
+      + '<span class="p8-dot" style="background:' + col + '"></span>'
+      + '<span style="font-size:12px">' + esc(k.nama) + '</span></td>'
+      + '<td style="text-align:right;font-weight:600;font-size:13px">' + k.jumlah + '</td>'
+      + '<td style="text-align:right;color:var(--muted);font-size:12px">' + k.persen + '%</td>'
+      + '</tr>';
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+// ── Tabel ranking generik (Diagnosis & Alat Medik) ───
+// elId: id div konten, subId: id span sub, list: [{nama,jumlah,persen}]
+// total: jumlah pasien, subLabel: teks sub, kolLabel: label kolom pertama
+function p8RenderRankTable(elId, subId, list, total, subLabel, kolLabel) {
+  var el  = document.getElementById(elId);
+  var sub = document.getElementById(subId);
+  if(sub) sub.textContent = (total||0) + ' ' + subLabel;
+  if(!list || !list.length) {
+    el.innerHTML = '<div class="p8-nodata">Tidak ada data</div>'; return;
+  }
+  var maxJ = list[0].jumlah;
+  var html = '<table class="p8-tbl"><thead><tr>'
+    + '<th>' + kolLabel + '</th>'
+    + '<th style="text-align:right">Jml</th>'
+    + '<th style="text-align:right">%</th>'
+    + '</tr></thead><tbody>';
+  list.forEach(function(d) {
+    var barW = Math.round(d.jumlah / maxJ * 100);
+    html += '<tr>'
+      + '<td><div style="font-size:11.5px;color:var(--text)">' + esc(d.nama) + '</div>'
+        + '<div class="p8-bar-wrap"><div class="p8-bar-fill" style="width:' + barW + '%"></div></div>'
+      + '</td>'
+      + '<td style="text-align:right;font-weight:600;font-size:12px;white-space:nowrap">' + d.jumlah + '</td>'
+      + '<td style="text-align:right;color:var(--muted);font-size:11px">' + d.persen + '%</td>'
+      + '</tr>';
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+// ── Jaminan range (tabel, bukan chart) ───────────────
+function p8RenderJaminanRange(jaminan, total) {
+  var el = document.getElementById('p8-jamrange-content');
+  document.getElementById('p8-jamrange-sub').textContent =
+    total + ' pasien (range aktif)';
+  if(!jaminan || !jaminan.length) {
+    el.innerHTML = '<div class="p8-nodata">Tidak ada data</div>'; return;
+  }
+  var palette = ['#3a6ea8','#2e7d52','#c0392b','#b07d00','#5a6a82',
+                 '#7b3f9e','#c95b1a','#1a7a8a'];
+  var maxJ = jaminan[0].jumlah;
+  var html = '<table class="p8-tbl"><thead><tr>'
+    + '<th>Jaminan</th>'
+    + '<th style="text-align:right">Pasien</th>'
+    + '<th style="text-align:right">%</th>'
+    + '</tr></thead><tbody>';
+  jaminan.forEach(function(j, i) {
+    var col = palette[i % palette.length];
+    var barW = Math.round(j.jumlah / maxJ * 100);
+    html += '<tr>'
+      + '<td style="display:flex;align-items:center;gap:6px">'
+        + '<span class="p8-dot" style="background:' + col + '"></span>'
+        + '<div style="flex:1">'
+          + '<div style="font-size:12px;color:var(--text)">' + esc(j.nama) + '</div>'
+          + '<div class="p8-bar-wrap"><div class="p8-bar-fill" style="width:' + barW + '%;background:' + col + '"></div></div>'
+        + '</div>'
+      + '</td>'
+      + '<td style="text-align:right;font-weight:600;font-size:13px;padding-left:8px">' + j.jumlah + '</td>'
+      + '<td style="text-align:right;color:var(--muted);font-size:12px">' + j.persen + '%</td>'
+      + '</tr>';
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+// ── Umur stat ─────────────────────────────────────────
+function p8RenderUmur(umur) {
+  var el = document.getElementById('p8-umur-content');
+  document.getElementById('p8-umur-sub').textContent =
+    umur && umur.n ? 'n = ' + umur.n : '';
+  if(!umur || !umur.n) {
+    el.innerHTML = '<div class="p8-nodata">Tidak ada data</div>'; return;
+  }
+  el.innerHTML =
+    '<div class="p8-metric-big">' + umur.avg.toFixed(1) + '</div>'
+    + '<div class="p8-metric-unit">tahun rata-rata</div>'
+    + '<div class="p8-metrics">'
+    + p8MetRow('Tertua',   umur.max.toFixed(1) + ' tahun')
+    + p8MetRow('Termuda',  umur.min.toFixed(1) + ' tahun')
+    + p8MetRow('Rata-rata',umur.avg.toFixed(1) + ' tahun')
+    + '</div>';
+}
+
+// ── Lama rawat stat ───────────────────────────────────
+function p8RenderLama(lama) {
+  var el = document.getElementById('p8-lama-content');
+  document.getElementById('p8-lama-sub').textContent =
+    lama && lama.n ? 'n = ' + lama.n : '';
+  if(!lama || !lama.n) {
+    el.innerHTML = '<div class="p8-nodata">Tidak ada data</div>'; return;
+  }
+  el.innerHTML =
+    '<div class="p8-metric-big">' + lama.avg.toFixed(1) + '</div>'
+    + '<div class="p8-metric-unit">hari rata-rata</div>'
+    + '<div class="p8-metrics">'
+    + p8MetRow('Terlama',    lama.max + ' hari')
+    + p8MetRow('Tersingkat', lama.min + ' hari')
+    + p8MetRow('Rata-rata',  lama.avg.toFixed(1) + ' hari')
+    + '</div>';
+}
+
+function p8MetRow(lbl, val) {
+  return '<div class="p8-metric-row">'
+    + '<span class="p8-metric-lbl">' + lbl + '</span>'
+    + '<span class="p8-metric-val">' + val + '</span>'
+    + '</div>';
+}
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
