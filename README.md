@@ -399,24 +399,4 @@ function getPivotStatistik() {
 
 ---
 
-## 11. Daftar Fungsi Server (code.gs) — ringkas
 
-**Util/infra:** `getsheetbyid`, `opsi`, `doGet`, `getWebAppUrl`, `include`, `_cariRowByNomor_`.
-**Page1:** `getDataPage1`, `getDokterJaga`, `invalidateP1Cache`.
-**Page3:** `getLaporan`, `updateLaporan(nomor, isiLaporan, diagnosis)`, `getNamaPasienDalamRentang`.
-**Page4:** `getDataPage4`, `cariSemuaNamaPasien`, `getAllLaporanPasien` (gabung ws1+arsip, anti-dobel).
-**Page5:** `getInitialData`, `caridata`, `baristerakhir`, `umuragamajaminan`, `getNomorBaruDanDataPasien`, `cekDuplikatLaporan`, `getNamaPasienByTanggal`, `getLaporanByTanggal`, `cariLaporanByKombinasi`, `getDiagnosisShiftSebelumnya`, `simpandisheet`.
-**Page6:** `getRencanaHD`.
-**Page7:** `getDaftarDinas`.
-**Page8/Pivot:** `getStatistikPage8`, `refreshPivot`, `pulihkanPivot`, `_tulisSheet_`, `getPivotStatistik`, `pasangTriggerMalam`.
-**Arsip:** `tandaiBarisTua`, `copyKeArsipBatch`, `hapusYangSudahDiarsip`, `_logArsip_`, `_kirimEmail_`, `pasangTriggerArsip`, `hapusBariKosong` (recovery).
-
----
-
-## 12. Catatan untuk Pengembangan Lanjutan
-
-- **Pengembangan ke unit lain** (anestesi, kamar bedah): kamar bedah sudah punya webapp terpisah dengan pola serupa (UI biru-abu, `formatRow()` server-side untuk tanggal). Pertimbangkan menyatukan util bersama.
-- **Saat menambah field laporan:** perbarui (a) urutan kolom di §2, (b) array baris di `simpandisheet` (A–Q), (c) `p5Kumpul`/`p5Render` di page5, (d) tampilan page3/page4, (e) `ARSIP_NCOLS_DATA` bila menambah kolom data sebelum S/T.
-- **Saat menambah diagnosis/alat baru ke statistik:** tambah ke `DIAGNOSIS_LIST`/`ALAT_LIST`, lalu jalankan `pulihkanPivot`.
-- **Gaya kerja yang diharapkan:** diskusi desain & konsekuensi sebelum coding; perubahan minimal sesuai cakupan (scope discipline); kirim berkas lengkap (bukan diff); self-verify (cek brace/paren, `node --check` untuk JS halaman, simulasi logika edge-case) sebelum menyerahkan.
-- **Keterbatasan akses:** proyek Apps Script tidak bisa dibaca via Google Drive API biasa; kode dipindahkan manual (paste atau export ke Docs).
