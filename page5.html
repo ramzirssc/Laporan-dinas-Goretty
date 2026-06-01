@@ -123,7 +123,7 @@
 </div>
 
 <script>
-var p5Total=0, p5Edit=false, p5Nama='', p5Ready=false;
+var p5Total=0, p5Edit=false, p5Nama='', p5Ready=false, p5Mode='lihat';
 
 function initP5(params){
  if(!p5Ready){
@@ -131,6 +131,8 @@ function initP5(params){
    document.getElementById('p5tambahdata').addEventListener('click',function(){p5Tambah(null);});
    document.getElementById('p5simpan').addEventListener('click',p5Simpan);
    document.getElementById('p5update').addEventListener('click',p5Perbarui);
+   // §7 — saat input baru, ganti shift memicu ambil diagnosis/alat shift sebelumnya
+   document.getElementById('p5dinas').addEventListener('change',p5AmbilDiagnosisSebelumnya);
    document.getElementById('p5nomor').addEventListener('keydown',function(e){
      if(e.key==='Enter')     {e.preventDefault();p5Cari();   return;}
      if(e.key==='ArrowRight'){e.preventDefault();p5Nav(+1);  return;}
@@ -276,6 +278,7 @@ function p5Kunci(){
  p5ReqShow(false);
  p5SetHint('Mode lihat — klik Perbarui untuk mengedit');
  p5Edit=false;
+ p5Mode='lihat';
 }
 function p5Perbarui(){
  ['p5nomor','p5tanggal','p5dinas','p5pj','p5pp'].forEach(function(id){
@@ -290,6 +293,7 @@ function p5Perbarui(){
  p5ReqShow(false);
  p5SetHint('Mode edit — ubah data lalu klik Simpan');
  p5Edit=true;
+ p5Mode='edit';
 }
 function p5Tambah(params){
  p5Bersih();p5Nama='';
@@ -301,6 +305,7 @@ function p5Tambah(params){
  p5ReqShow(true);
  p5SetHint('Mode input baru — isi data lalu klik Simpan');
  p5Edit=true;
+ p5Mode='baru';
  if(params){
    var tgEl=document.getElementById('p5tanggal');if(tgEl)tgEl.value=params.hariIni||'';
    var dnEl=document.getElementById('p5dinas');if(dnEl)dnEl.value=params.shift||'';
@@ -317,6 +322,8 @@ function p5Tambah(params){
        var el=document.getElementById(id);if(el)el.value=p5Fv(map[id]);
      });
    }
+   // §7 — identitas (nama+tanggal+shift) sudah lengkap → ambil shift sebelumnya
+   p5AmbilDiagnosisSebelumnya();
  }else{
    var psEl2=document.getElementById('p5pasien');
    if(psEl2){psEl2.hidden=false;psEl2.disabled=false;}
@@ -330,23 +337,42 @@ function p5Simpan(){
  if(!ui.nomor||!ui.tanggal||!ui.dinas||!ui.pj||!ui.pasien||!ui.pp){
    toast('Ada data wajib yang belum diisi.','err');return;
  }
- p5Nama=ui.pasien;loading(true);
+ ui.isBaru=(p5Mode==='baru');           // §5 — server tentukan baru vs edit dari flag ini
+ p5Nama=ui.pasien;
+ var btn=document.getElementById('p5simpan');
+ btn.disabled=true;loading(true);       // anti klik-ganda
  google.script.run
-   .withSuccessHandler(function(){
-     if(ui.nomor>p5Total)p5Total=ui.nomor;
+   .withSuccessHandler(function(raw){
+     loading(false);btn.disabled=false;
+     var res;try{res=JSON.parse(raw);}catch(e){res=null;}
+     if(!res||!res.ok){
+       if(res&&res.alasan==='duplikat'){
+         toast('Laporan pasien+tanggal+shift ini sudah ada (No. '+res.nomor+').','err');
+       }else if(res&&res.alasan==='tidak_ditemukan'){
+         toast('Laporan tidak ditemukan untuk diedit.','err');
+       }else if(res&&res.alasan==='sibuk'){
+         toast('Server sibuk, coba simpan lagi sebentar.','err');
+       }else{
+         toast('Gagal menyimpan data.','err');
+       }
+       return;
+     }
+     var finalNomor=res.nomor;            // §5 — pakai nomor FINAL dari server, bukan preview
+     document.getElementById('p5nomor').value=finalNomor;
+     if(finalNomor>p5Total)p5Total=finalNomor;
      p5Kunci();
      var nhEl=document.getElementById('p5namahidden');
      if(nhEl&&p5Nama)nhEl.value=p5Nama;
-     p5NavUpdate(ui.nomor);
-     toast('Data berhasil disimpan.','ok');
-     loading(false);
+     p5NavUpdate(finalNomor);
+     toast('Data berhasil disimpan (No. '+finalNomor+').','ok');
      loaded.p1=false;
    })
-   .withFailureHandler(function(e){loading(false);errH(e);})
+   .withFailureHandler(function(e){loading(false);btn.disabled=false;errH(e);})
    .simpandisheet(ui);
 }
 function p5AmbilPasien(){
  var nama=document.getElementById('p5pasien').value;if(!nama)return;
+ p5Nama=nama;
  google.script.run
    .withSuccessHandler(function(h){
      var p=JSON.parse(h);if(!p)return;
@@ -355,9 +381,39 @@ function p5AmbilPasien(){
      Object.keys(map).forEach(function(id){
        var el=document.getElementById(id);if(el)el.value=p5Fv(map[id]);
      });
+     p5AmbilDiagnosisSebelumnya(); // §7 — setelah pasien dipilih
    })
    .withFailureHandler(errH)
    .umuragamajaminan(nama);
+}
+
+// §7 — Ambil diagnosis & alat medik dari 1 shift dinas sebelumnya (hanya saat input BARU).
+// - Diagnosis hanya diisi bila textarea masih kosong (jangan timpa ketikan user).
+// - Alat medik hanya dicentang bila belum ada yang tercentang, dan hanya checkbox non-disabled.
+function p5AmbilDiagnosisSebelumnya(){
+ if(p5Mode!=='baru')return;
+ var psEl=document.getElementById('p5pasien');
+ var nama=(psEl&&!psEl.hidden&&psEl.value)?psEl.value
+          :(document.getElementById('p5namahidden').value||p5Nama);
+ var tanggal=document.getElementById('p5tanggal').value;
+ var shift=document.getElementById('p5dinas').value;
+ if(!nama||!tanggal||!shift)return;
+ google.script.run
+   .withSuccessHandler(function(raw){
+     var o;try{o=JSON.parse(raw);}catch(e){return;}
+     if(!o)return;
+     var dEl=document.getElementById('p5diagnosis');
+     if(dEl&&!dEl.value.trim()&&o.diagnosis)dEl.value=o.diagnosis;
+     var anyChecked=document.querySelectorAll('.multi:checked').length>0;
+     if(!anyChecked&&o.alatmedik){
+       String(o.alatmedik).split(';').forEach(function(id){
+         var cb=document.getElementById(String(id).trim());
+         if(cb&&!cb.disabled)cb.checked=true;
+       });
+     }
+   })
+   .withFailureHandler(function(){})
+   .getDiagnosisShiftSebelumnya(nama,tanggal,shift);
 }
 function p5Aktif(a,inc){
  ['p5tanggal','p5dinas','p5pj','p5pp','p5bed','p5diagnosis','p5laporan'].forEach(function(id){

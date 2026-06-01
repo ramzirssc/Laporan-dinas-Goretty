@@ -194,9 +194,18 @@ function getLaporan(filter) {
   }));
 }
 
-function updateLaporan(nomor, isiLaporan) {
-  ws1.getRange(Number(nomor)+1, 8).setValue(isiLaporan);
+// §6 — update inline dari Page3. Tanda tangan WAJIB 3-argumen.
+// Kolom 8 (H)=isiLaporan selalu; kolom 7 (G)=diagnosis HANYA bila diberi
+// (agar pemanggil yang tidak mengubah diagnosis tidak menimpa).
+function updateLaporan(nomor, isiLaporan, diagnosis) {
+  var baris = _cariRowByNomor_(nomor);
+  if(baris < 0) return JSON.stringify({ok:false, alasan:'tidak_ditemukan'});
+  ws1.getRange(baris, 8).setValue(isiLaporan);
+  if(diagnosis !== undefined && diagnosis !== null){
+    ws1.getRange(baris, 7).setValue(diagnosis);
+  }
   CacheService.getScriptCache().removeAll(['p1_data','init_data']);
+  return JSON.stringify({ok:true, nomor:Number(nomor)});
 }
 
 function getNamaPasienDalamRentang(tm, ta) {
@@ -351,19 +360,75 @@ function getInitialData() {
   var cache = CacheService.getScriptCache();
   var cached = cache.get('init_data');
   if(cached) return cached;
-  var total = ws1.getLastRow()-1;
+  var total = baristerakhir();                 // §4 — max kolom A, BUKAN getLastRow()-1
   if(total<1) return JSON.stringify({total:0, baris:[[]]});
-  var hasil = JSON.stringify({total:total, baris:ws1.getRange(ws1.getLastRow(),1,1,17).getValues()});
+  var baris = _cariRowByNomor_(total);         // baris dengan nomor terbesar (posisi ≠ nomor)
+  var data = (baris>0) ? ws1.getRange(baris,1,1,17).getValues() : [[]];
+  var hasil = JSON.stringify({total:total, baris:data});
   try{cache.put('init_data', hasil, 45);}catch(e){}
   return hasil;
 }
 
 function caridata(record) {
   if(!record||record==='') return '';
-  return JSON.stringify(ws1.getRange(Number(record)+1,1,1,17).getValues());
+  var baris = _cariRowByNomor_(record);        // §5 — cari via nomor, bukan posisi baris
+  if(baris<0) return '';
+  return JSON.stringify(ws1.getRange(baris,1,1,17).getValues());
 }
 
-function baristerakhir() { return ws1.getLastRow()-1; }
+// §4 — Sumber kebenaran nomor = nomor TERBESAR di kolom A.
+// Tahan terhadap ArrayFormula kolom R yang menggembungkan getLastRow()
+// dan terhadap baris kosong tersisa di bawah.
+function baristerakhir() {
+  var lr = ws1.getLastRow();
+  if(lr < 2) return 0;
+  var col = ws1.getRange(2, 1, lr - 1, 1).getValues(); // baca kolom A sekaligus
+  var maxN = 0;
+  for(var i = 0; i < col.length; i++) {
+    var v = Number(col[i][0]);
+    if(v > maxN) maxN = v;
+  }
+  return maxN;
+}
+
+// §5 — kembalikan nomor baris aktual (1-based) untuk sebuah NOMOR laporan, atau -1.
+// Dipakai semua operasi edit/baca-per-nomor (posisi ≠ nomor setelah arsip/edit).
+function _cariRowByNomor_(nomor) {
+  var lr = ws1.getLastRow();
+  if(lr < 2) return -1;
+  var col = ws1.getRange(2, 1, lr - 1, 1).getValues();
+  var target = Number(nomor);
+  for(var i = 0; i < col.length; i++) {
+    if(Number(col[i][0]) === target) return i + 2; // +2: offset header + 0-based
+  }
+  return -1;
+}
+
+// §5 — cek apakah kombinasi pasien+tanggal+shift sudah ada.
+// Kembalikan {count, nomor(existing pertama)}.
+function cekDuplikatLaporan(pasien, tanggal, shift) {
+  var lr = ws1.getLastRow();
+  if(lr < 2) return {count:0, nomor:0};
+  var tz = Session.getScriptTimeZone();
+  var data = ws1.getRange(2, 1, lr - 1, 5).getValues(); // A..E: nomor,tgl,shift,pj,pasien
+  var pTgt  = String(pasien||'').toLowerCase().trim();
+  var tgTgt = String(tanggal||'').substring(0,10);
+  var sTgt  = String(shift||'').toLowerCase().trim();
+  var count = 0, nomor = 0;
+  for(var i = 0; i < data.length; i++) {
+    var r = data[i];
+    if(!r[0]) continue;
+    if(String(r[4]||'').toLowerCase().trim() !== pTgt) continue;
+    var d = '';
+    try{ d = Utilities.formatDate(new Date(r[1]), tz, 'yyyy-MM-dd'); }
+    catch(e){ d = String(r[1]).substring(0,10); }
+    if(d !== tgTgt) continue;
+    if(String(r[2]||'').toLowerCase().trim() !== sTgt) continue;
+    count++;
+    if(!nomor) nomor = r[0];
+  }
+  return {count:count, nomor:nomor};
+}
 
 function umuragamajaminan(sourcepasien) {
   var rows = ws2.getRange(2,1,Math.max(ws2.getLastRow()-1,1),16).getValues();
@@ -372,20 +437,90 @@ function umuragamajaminan(sourcepasien) {
 }
 
 function getNomorBaruDanDataPasien(namaPasien, shift) {
-  var n = ws1.getLastRow();
+  var n = baristerakhir() + 1;                 // §4 — preview saja; server tetap generate ulang saat simpan
   var rows = ws2.getRange(2,1,Math.max(ws2.getLastRow()-1,1),16).getValues();
   var b = rows.find(function(r){return r[1]==namaPasien;});
   return JSON.stringify({nomorBaru:n, dataPasien:b||null, shift:shift});
 }
 
+// §5 — Penyimpanan aman. WAJIB: LockService + cek duplikat server + nomor server.
+// Selalu kembalikan JSON string. Bersihkan cache p1_data/init_data.
 function simpandisheet(ui) {
-  var total = baristerakhir(), baris = Number(ui.nomor)+1;
-  var row = [ui.nomor,ui.tanggal,ui.dinas,ui.pj,ui.pasien,ui.pp,
-             ui.diagnosis,ui.laporan,ui.alatmedik,new Date(),
-             ui.agama,ui.jaminan,ui.dpjp,ui.dpjplain,ui.umur,ui.harike,ui.bed];
-  if(ui.nomor>total){ ws1.appendRow(row); }
-  else{ ws1.getRange(baris,1,1,17).setValues([row]); }
-  CacheService.getScriptCache().removeAll(['p1_data','init_data']);
+  var lock = LockService.getScriptLock();
+  try {
+    if(!lock.tryLock(20000)) return JSON.stringify({ok:false, alasan:'sibuk'});
+  } catch(e) {
+    return JSON.stringify({ok:false, alasan:'sibuk'});
+  }
+  try {
+    var isBaru = (ui.isBaru === true || ui.isBaru === 'true'); // 2 — dari client, jangan tebak dari nomor
+
+    if(isBaru) {
+      // 3a — tolak jika kombinasi pasien+tanggal+shift sudah ada
+      var dup = cekDuplikatLaporan(ui.pasien, ui.tanggal, ui.dinas);
+      if(dup.count > 0) return JSON.stringify({ok:false, alasan:'duplikat', nomor:dup.nomor});
+      // 3b — nomor digenerate di SERVER, abaikan ui.nomor
+      var nomorBaru = baristerakhir() + 1;
+      var row = [nomorBaru,ui.tanggal,ui.dinas,ui.pj,ui.pasien,ui.pp,
+                 ui.diagnosis,ui.laporan,ui.alatmedik,new Date(),
+                 ui.agama,ui.jaminan,ui.dpjp,ui.dpjplain,ui.umur,ui.harike,ui.bed];
+      ws1.appendRow(row); // 3c — tulis A–Q (17 kolom); kolom R diisi ArrayFormula otomatis
+      CacheService.getScriptCache().removeAll(['p1_data','init_data']);
+      return JSON.stringify({ok:true, nomor:nomorBaru, mode:'baru'});
+    } else {
+      // 4 — edit: cari baris via nomor; jangan buat baris baru bila tak ketemu
+      var baris = _cariRowByNomor_(ui.nomor);
+      if(baris < 0) return JSON.stringify({ok:false, alasan:'tidak_ditemukan'});
+      var rowE = [ui.nomor,ui.tanggal,ui.dinas,ui.pj,ui.pasien,ui.pp,
+                  ui.diagnosis,ui.laporan,ui.alatmedik,new Date(),
+                  ui.agama,ui.jaminan,ui.dpjp,ui.dpjplain,ui.umur,ui.harike,ui.bed];
+      ws1.getRange(baris,1,1,17).setValues([rowE]);
+      CacheService.getScriptCache().removeAll(['p1_data','init_data']);
+      return JSON.stringify({ok:true, nomor:ui.nomor, mode:'edit'});
+    }
+  } finally {
+    lock.releaseLock(); // 1 — selalu lepas lock
+  }
+}
+
+// §7 — Diagnosis & alat medik dari 1 shift dinas SEBELUMNYA untuk pasien sama.
+// Urutan harian: Pagi → Sore → Malam.
+//   Sore  → ambil Pagi  (hari sama)
+//   Malam → ambil Sore  (hari sama)
+//   Pagi  → ambil Malam (hari SEBELUMNYA)
+// Kembalikan JSON {diagnosis, alatmedik} (string; alatmedik dipisah ';').
+function getDiagnosisShiftSebelumnya(nama, tanggal, shift) {
+  var lr = ws1.getLastRow();
+  if(lr < 2) return JSON.stringify({diagnosis:'', alatmedik:''});
+  var tz = Session.getScriptTimeZone();
+  var sh = String(shift||'').toLowerCase().trim();
+  var tgtTgl = String(tanggal||'').substring(0,10);
+  var prevShift = '', prevTgl = '';
+  if(sh === 'sore')       { prevShift = 'pagi';  prevTgl = tgtTgl; }
+  else if(sh === 'malam') { prevShift = 'sore';  prevTgl = tgtTgl; }
+  else if(sh === 'pagi')  {
+    prevShift = 'malam';
+    var d = new Date(tgtTgl); d.setDate(d.getDate() - 1);
+    prevTgl = Utilities.formatDate(d, tz, 'yyyy-MM-dd');
+  } else {
+    return JSON.stringify({diagnosis:'', alatmedik:''});
+  }
+  var data = ws1.getRange(2, 1, lr - 1, 9).getValues(); // A..I
+  var namaLc = String(nama||'').toLowerCase().trim();
+  var found = null;
+  for(var i = 0; i < data.length; i++) {
+    var r = data[i];
+    if(!r[0]) continue;
+    if(String(r[4]||'').toLowerCase().trim() !== namaLc) continue;
+    var d2 = '';
+    try{ d2 = Utilities.formatDate(new Date(r[1]), tz, 'yyyy-MM-dd'); }
+    catch(e){ d2 = String(r[1]).substring(0,10); }
+    if(d2 !== prevTgl) continue;
+    if(String(r[2]||'').toLowerCase().trim() !== prevShift) continue;
+    found = r; // ambil kemunculan terakhir di sheet
+  }
+  if(!found) return JSON.stringify({diagnosis:'', alatmedik:''});
+  return JSON.stringify({diagnosis:String(found[6]||''), alatmedik:String(found[8]||'')});
 }
 
 // ═══════════════════════════════════════════════════════
@@ -584,4 +719,167 @@ function getStatistikPage8(tahun, tglMulai, tglAkhir) {
 
   try{cache.put(cacheKey,hasil,600);}catch(e){}
   return hasil;
+}
+
+// ═══════════════════════════════════════════════════════
+//  REFRESH PIVOT (§8) — agregasi bulanan dari ws1.
+//  CATATAN: sistem ini TIDAK memakai arsip (data Goretty relatif kecil),
+//  jadi pivot dihitung 100% dari sheet Laporan (ws1).
+//  Diagnosis & alat dihitung HANYA dari baris yang kolom R (DiagnosisEdited)
+//  terisi → otomatis 1 pasien 1 hitungan.
+// ═══════════════════════════════════════════════════════
+// Daftar diagnosis sudah dirapikan & di-dedupe dari README (urutan kemunculan pertama).
+const DIAGNOSIS_LIST = [
+  'ards','pneumonia','influenza','hiponatremia','peritonitis','post op','ispa',
+  'viral infection','hmd','prematur','hiperbilirubin','dhf','ensefalopati',
+  'low intake','dss','dehidrasi','hipoglikemia','sepsis','rd','ttn','hipokalemia',
+  'ivh','ich','kejang demam','bronchopneumonia','bp','syok','hiperglikemia','demam',
+  'hiperpireksia','nkb','hyaline membrane disease','isk','hipoglikemi','gea','dengue',
+  'snad','ileus','tutup','respiratory distress','ependimoma','astma','sifilis',
+  'pertusis','bronkiolitis','anemia'
+];
+
+const ALAT_LIST = [
+  'CAPD','Chemoport','Cimino','CPAP','CRRT','CVC',
+  'Doublelumen|Double lumen HD','Drain','Facemask','HFNC','ICON','Kateter',
+  'Nasalkanul','Nefrostomi','NGT','NIV','PICC',
+  'Trakeostomi','Triplelumen|Triple lumen HD','Umbicath','Ventilator','WSD'
+];
+
+function refreshPivot() {
+  var tz = Session.getScriptTimeZone();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // ── Kumpulkan semua baris dari ws1 (anti-dobel via nomor) ──
+  var semua = [];
+  var nomorTerpakai = {};
+  var lr1 = ws1.getLastRow();
+  if(lr1 >= 2) {
+    var raw1 = ws1.getRange(2, 1, lr1 - 1, 18).getValues(); // A..R
+    raw1.forEach(function(r) {
+      if(!r[0]) return;
+      var nomor = Number(r[0]);
+      if(nomorTerpakai[nomor]) return;
+      nomorTerpakai[nomor] = true;
+      semua.push({ nomor:nomor, tgl:r[1], diagEdited:String(r[17]||''), alat:String(r[8]||'') });
+    });
+  }
+
+  // ── Agregasi per bulan (yyyy-MM) ──
+  var bulanMap = {};
+  semua.forEach(function(o) {
+    if(!o.tgl) return;
+    var tglStr = (o.tgl instanceof Date)
+      ? Utilities.formatDate(o.tgl, tz, 'yyyy-MM')
+      : String(o.tgl).substring(0, 7);
+    if(!tglStr || tglStr.length < 7) return;
+
+    var diagTeks = String(o.diagEdited || '').toLowerCase().trim();
+    if(!diagTeks) return; // kolom R kosong → bukan baris pertama pasien → lewati
+
+    if(!bulanMap[tglStr]) {
+      var diagObj = {}, alatObj = {};
+      DIAGNOSIS_LIST.forEach(function(d) { diagObj[d] = 0; });
+      ALAT_LIST.forEach(function(a)      { alatObj[a] = 0; });
+      bulanMap[tglStr] = { diag: diagObj, alat: alatObj };
+    }
+    var bln = bulanMap[tglStr];
+
+    DIAGNOSIS_LIST.forEach(function(d) {
+      if(diagTeks.indexOf(d) >= 0) bln.diag[d]++;
+    });
+    var alatTeks = String(o.alat || '').trim();
+    if(alatTeks) {
+      var alatArr = alatTeks.split(/[;,]/).map(function(a) { return a.trim().toLowerCase(); });
+      ALAT_LIST.forEach(function(a) {
+        // dukung alias "id|label"
+        var aliases = a.toLowerCase().split('|');
+        for(var k = 0; k < aliases.length; k++) {
+          if(alatArr.indexOf(aliases[k]) >= 0) { bln.alat[a]++; break; }
+        }
+      });
+    }
+  });
+
+  var bulanList = Object.keys(bulanMap).sort(); // ASCENDING (lama → baru)
+
+  var totalDiag = {}, totalAlat = {};
+  DIAGNOSIS_LIST.forEach(function(d) { totalDiag[d] = 0; });
+  ALAT_LIST.forEach(function(a)      { totalAlat[a] = 0; });
+  bulanList.forEach(function(bln) {
+    DIAGNOSIS_LIST.forEach(function(d) { totalDiag[d] += bulanMap[bln].diag[d]; });
+    ALAT_LIST.forEach(function(a)      { totalAlat[a] += bulanMap[bln].alat[a]; });
+  });
+
+  var diagHeader = ['Bulan'].concat(DIAGNOSIS_LIST);
+  var alatHeader = ['Bulan'].concat(ALAT_LIST);
+  var diagData = bulanList.map(function(bln) {
+    var row = [new Date(bln + '-01')];
+    DIAGNOSIS_LIST.forEach(function(d) { row.push(bulanMap[bln].diag[d]); });
+    return row;
+  });
+  var alatData = bulanList.map(function(bln) {
+    var row = [new Date(bln + '-01')];
+    ALAT_LIST.forEach(function(a) { row.push(bulanMap[bln].alat[a]); });
+    return row;
+  });
+  var diagTotalRow = ['TOTAL'];
+  DIAGNOSIS_LIST.forEach(function(d) { diagTotalRow.push(totalDiag[d]); });
+  var alatTotalRow = ['TOTAL'];
+  ALAT_LIST.forEach(function(a) { alatTotalRow.push(totalAlat[a]); });
+  diagData.push(diagTotalRow);
+  alatData.push(alatTotalRow);
+
+  _tulisSheet_(ss, 'Pivot Diagnosis', diagHeader, diagData);
+  _tulisSheet_(ss, 'Pivot Alat Medik', alatHeader, alatData);
+  CacheService.getScriptCache().remove('stat8_pivot');
+}
+
+// Sekali-jalan untuk MEMULIHKAN pivot dari ws1.
+function pulihkanPivot() {
+  refreshPivot();
+  Logger.log('Pivot dipulihkan dari ws1. Cek sheet Pivot Diagnosis & Pivot Alat Medik.');
+}
+
+function _tulisSheet_(ss, namaSheet, header, dataRows) {
+  var sh = ss.getSheetByName(namaSheet);
+  if(!sh) { sh = ss.insertSheet(namaSheet); }
+  else    { sh.clearContents(); }
+  sh.getRange(1, 1, 1, header.length).setValues([header]);
+  if(dataRows.length > 0) {
+    sh.getRange(2, 1, dataRows.length, header.length).setValues(dataRows);
+  }
+  var nDataBaris = dataRows.length - 1; // baris terakhir = TOTAL (teks), jangan diformat tanggal
+  if(nDataBaris > 0) {
+    sh.getRange(2, 1, nDataBaris, 1).setNumberFormat('yyyy-MM');
+  }
+  sh.setFrozenRows(1);
+}
+
+function getPivotStatistik() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  function bacaSheet(namaSheet) {
+    var sh = ss.getSheetByName(namaSheet);
+    if(!sh || sh.getLastRow() < 2) return { header: [], rows: [] };
+    var all    = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getValues();
+    var header = all[0].map(function(h) { return String(h); });
+    var rows   = all.slice(1).map(function(r) {
+      var obj = {};
+      header.forEach(function(h, i) { obj[h] = r[i]; });
+      return obj;
+    });
+    return { header: header, rows: rows };
+  }
+  return JSON.stringify({
+    diagnosis: bacaSheet('Pivot Diagnosis'),
+    alatMedik: bacaSheet('Pivot Alat Medik')
+  });
+}
+
+// Pasang trigger harian refreshPivot jam 01:00 (jalankan sekali secara manual).
+function pasangTriggerMalam() {
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if(t.getHandlerFunction() === 'refreshPivot') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('refreshPivot').timeBased().atHour(1).everyDays(1).create();
 }
