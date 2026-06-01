@@ -1,0 +1,411 @@
+<!-- PAGE 5: TULIS LAPORAN -->
+<style>
+ .p5h{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
+   background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);
+   padding:13px 18px;margin-bottom:12px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+ .p5h::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;
+   background:linear-gradient(180deg,var(--blue) 0%,var(--blue-mid) 100%);
+   border-radius:var(--radius-lg) 0 0 var(--radius-lg)}
+ .p5h h2{font-family:var(--serif);font-size:17px;font-weight:600;font-style:italic;color:var(--blue-dk)}
+ .p5h h2 span{font-style:normal;font-weight:400;font-size:12px;color:var(--muted);margin-left:4px}
+ .nav-g5{display:flex;align-items:center;gap:5px}
+ .nav-g5>span{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-right:2px}
+ .bn5{width:36px;height:36px;background:var(--bg2);border:1px solid var(--border);
+   border-radius:var(--radius-sm);font-size:13px;cursor:pointer;display:grid;
+   place-items:center;color:var(--text-soft);transition:background .18s,border-color .18s;
+   min-height:44px;min-width:44px}
+ .bn5:hover:not(:disabled){background:var(--blue-lt);border-color:var(--blue)}
+ .bn5:disabled{opacity:.28;cursor:not-allowed}
+ #p5nomor{width:74px;height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);
+   font-family:var(--sans);font-size:14px;font-weight:600;text-align:center;padding:0 5px;
+   background:var(--bg2);color:var(--text);min-height:44px;
+   transition:border-color .18s,background .18s,box-shadow .18s}
+ #p5nomor:focus{outline:none;border-color:var(--blue-focus);background:#fff;box-shadow:0 0 0 3px var(--blue-lt)}
+ #p5nomor:disabled{background:var(--surface2);color:var(--muted)}
+ .act-bar5{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 18px;
+   background:var(--surface);border:1px solid var(--border-soft);
+   border-radius:var(--radius-lg);box-shadow:var(--shadow)}
+ .act-hint5{font-size:12px;color:var(--muted);font-style:italic}
+ @media(max-width:767px){
+   .p5h{padding:10px 14px}.p5h h2{font-size:15px}
+   .act-bar5{padding:10px 14px;gap:8px}
+   .act-hint5{width:100%;text-align:center}
+ }
+ @media(max-width:480px){.p5h{flex-direction:column;align-items:flex-start}}
+</style>
+
+<div class="p5h">
+ <h2>Laporan Dinas <span>/ Ruang Goretty</span></h2>
+ <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+   <div class="nav-g5">
+     <span>No.</span>
+     <button class="bn5" id="p5-btn-prev" onclick="p5Navigasi(-1)">&#8592;</button>
+     <input type="number" id="p5nomor" min="1" placeholder="—">
+     <button class="bn5" id="p5-btn-next" onclick="p5Navigasi(+1)">&#8594;</button>
+     <button class="btn btn-ghost" id="p5nmr"
+       style="height:36px;padding:0 11px;font-size:12px;min-height:44px">Cari</button>
+   </div>
+   <button class="btn btn-primary" id="p5tambahdata" style="font-size:12px">+ Laporan Baru</button>
+ </div>
+</div>
+
+<div class="card">
+ <div class="card-title">Waktu &amp; Petugas</div>
+ <div class="grid g4">
+   <div class="field"><label>Tanggal Dinas <span class="req">*</span></label>
+     <input type="date" id="p5tanggal" disabled></div>
+   <div class="field"><label>Shift <span class="req">*</span></label>
+     <select id="p5dinas" disabled>
+       <option hidden disabled selected value="">Pilih shift</option>
+       <option>Pagi</option><option>Sore</option><option>Malam</option>
+     </select></div>
+   <div class="field"><label>Perawat PJ <span class="req">*</span></label>
+     <select id="p5pj" disabled>
+       <option hidden disabled selected value="">Pilih PJ</option>
+       <?!=opsiperawat?>
+     </select></div>
+   <div class="field"><label>Perawat PP <span class="req">*</span></label>
+     <select id="p5pp" disabled>
+       <option hidden disabled selected value="">Pilih PP</option>
+       <?!=opsiperawat?>
+     </select></div>
+ </div>
+</div>
+
+<div class="card">
+ <div class="card-title">Data Pasien</div>
+ <div class="grid g4">
+   <div class="field" style="grid-column:span 2">
+     <label>Nama Pasien <span class="req">*</span></label>
+     <input type="text" id="p5namahidden" placeholder="Nama pasien" disabled>
+     <select id="p5pasien" hidden disabled>
+       <option hidden disabled selected value="">Pilih pasien</option>
+       <?!=opsipasien?>
+     </select>
+   </div>
+   <div class="field"><label>Umur</label>
+     <input type="text" id="p5umur" placeholder="—" disabled></div>
+   <div class="field"><label>Hari Ke-</label>
+     <input type="text" id="p5harike" placeholder="—" disabled maxlength="3"></div>
+   <div class="field"><label>Tempat Tidur</label>
+     <select id="p5bed" disabled>
+       <option hidden disabled selected value="">Pilih</option>
+       <?!=opsitempat?>
+     </select></div>
+   <div class="field"><label>Agama</label>
+     <input type="text" id="p5agama" placeholder="—" disabled></div>
+   <div class="field"><label>Jaminan</label>
+     <input type="text" id="p5jaminan" placeholder="—" disabled></div>
+   <div class="field" style="grid-column:span 2"><label>DPJP</label>
+     <input type="text" id="p5dpjp" placeholder="—" disabled></div>
+   <div class="field" style="grid-column:span 2"><label>Konsulen Lainnya</label>
+     <input type="text" id="p5dpjplain" placeholder="—" disabled></div>
+ </div>
+</div>
+
+<div class="card">
+ <div class="card-title">Alat Medik yang Digunakan</div>
+ <div class="cbx-grid"><?!= htmlCheckbox ?></div>
+</div>
+<div class="card">
+ <div class="card-title">Diagnosis</div>
+ <textarea id="p5diagnosis" rows="5" placeholder="Ketik diagnosis di sini." disabled></textarea>
+</div>
+<div class="card">
+ <div class="card-title">Isi Laporan</div>
+ <textarea id="p5laporan" rows="18" placeholder="Ketik isi laporan di sini." disabled></textarea>
+</div>
+
+<div class="act-bar5">
+ <button class="btn btn-outline" id="p5update">&#9998;&nbsp; Perbarui Laporan</button>
+ <button class="btn btn-success" id="p5simpan" hidden>&#10003;&nbsp; Simpan Laporan</button>
+ <span class="act-hint5" id="p5hint">Mode lihat — klik Perbarui untuk mengedit</span>
+</div>
+
+<script>
+var p5Total=0, p5Edit=false, p5Nama='', p5Ready=false;
+
+function initP5(params){
+ if(!p5Ready){
+   document.getElementById('p5nmr').addEventListener('click',p5Cari);
+   document.getElementById('p5tambahdata').addEventListener('click',function(){p5Tambah(null);});
+   document.getElementById('p5simpan').addEventListener('click',p5Simpan);
+   document.getElementById('p5update').addEventListener('click',p5Perbarui);
+   document.getElementById('p5nomor').addEventListener('keydown',function(e){
+     if(e.key==='Enter')     {e.preventDefault();p5Cari();   return;}
+     if(e.key==='ArrowRight'){e.preventDefault();p5Nav(+1);  return;}
+     if(e.key==='ArrowLeft') {e.preventDefault();p5Nav(-1);  return;}
+     if(e.key==='ArrowUp')   {e.preventDefault();p5Nav(+1);  return;}
+     if(e.key==='ArrowDown') {e.preventDefault();p5Nav(-1);  return;}
+   });
+   p5Ready=true;
+ }
+
+ if(params && params.viewNomor){
+   loading(true);
+   google.script.run
+     .withSuccessHandler(function(raw){
+       loading(false);
+       if(!raw||raw===''){toast('Data tidak ditemukan','err');return;}
+       try{p5Render(JSON.parse(raw));}catch(e){toast('Error render: '+e.message,'err');}
+       if(!p5Total){
+         google.script.run
+           .withSuccessHandler(function(d){
+             try{p5Total=JSON.parse(d).total||0;}catch(e){}
+             p5NavUpdate(params.viewNomor);
+           })
+           .withFailureHandler(function(){})
+           .getInitialData();
+       }else{p5NavUpdate(params.viewNomor);}
+     })
+     .withFailureHandler(function(e){loading(false);errH(e);})
+     .caridata(params.viewNomor);
+
+ }else if(params && params.isNew){
+   loading(true);
+   google.script.run
+     .withSuccessHandler(function(raw){
+       loading(false);
+       try{
+         var obj=JSON.parse(raw);
+         p5Total=obj.nomorBaru-1;
+         p5Tambah({namaPasien:params.namaPasien,shift:params.shift,
+                   hariIni:params.hariIni,dataPasien:obj.dataPasien});
+       }catch(e){toast('Error: '+e.message,'err');}
+     })
+     .withFailureHandler(function(e){loading(false);errH(e);})
+     .getNomorBaruDanDataPasien(params.namaPasien,params.shift);
+
+ }else{
+   loading(true);
+   google.script.run
+     .withSuccessHandler(function(raw){
+       loading(false);
+       try{
+         var obj=JSON.parse(raw);
+         p5Total=obj.total||0;
+         if(p5Total>0 && obj.baris){
+           p5Render(obj.baris);
+         }else{
+           p5SetHint('Belum ada laporan. Klik + Laporan Baru untuk mulai.');
+         }
+         p5NavUpdate(p5Total);
+       }catch(e){
+         toast('Error memuat data: '+e.message,'err');
+         p5SetHint('Gagal memuat data. Coba klik tab ini lagi.');
+       }
+     })
+     .withFailureHandler(function(e){loading(false);errH(e);})
+     .getInitialData();
+ }
+}
+
+function p5Nav(arah){
+ if(p5Edit)return;
+ var n=parseInt(document.getElementById('p5nomor').value)||p5Total;
+ var t=n+arah;
+ if(t<1){toast('Sudah di nomor pertama.','err');p5NavUpdate(n);return;}
+ if(t>p5Total){toast('Sudah di nomor terakhir ('+p5Total+').','err');p5NavUpdate(n);return;}
+ p5Kunci();loading(true);
+ google.script.run
+   .withSuccessHandler(function(s){
+     loading(false);
+     try{p5Render(JSON.parse(s));p5NavUpdate(t);}
+     catch(e){toast('Error: '+e.message,'err');}
+   })
+   .withFailureHandler(function(e){loading(false);errH(e);})
+   .caridata(t);
+}
+function p5Cari(){
+ var c=parseInt(document.getElementById('p5nomor').value);
+ if(!c||c<1)return;
+ if(c>p5Total){toast('Nomor '+c+' belum ada.','err');return;}
+ p5Kunci();loading(true);
+ google.script.run
+   .withSuccessHandler(function(s){
+     loading(false);
+     try{p5Render(JSON.parse(s));p5NavUpdate(c);}
+     catch(e){toast('Error: '+e.message,'err');}
+   })
+   .withFailureHandler(function(e){loading(false);errH(e);})
+   .caridata(c);
+}
+function p5NavUpdate(n){
+ document.getElementById('p5-btn-prev').disabled=(n<=1);
+ document.getElementById('p5-btn-next').disabled=(n>=p5Total);
+}
+function p5Render(baris){
+ var r=(Array.isArray(baris)&&baris.length>0&&Array.isArray(baris[0]))?baris[0]:baris;
+ if(!r||!r.length){p5SetHint('Data kosong');return;}
+ p5Nama=String(r[4]||'');
+ var ids={p5nomor:r[0],p5dinas:r[2],p5pj:r[3],p5namahidden:r[4],
+   p5pasien:r[4],p5pp:r[5],p5diagnosis:r[6],p5laporan:r[7],
+   p5agama:r[10],p5jaminan:r[11],p5dpjp:r[12],p5dpjplain:r[13],
+   p5umur:r[14],p5harike:r[15],p5bed:r[16]};
+ Object.keys(ids).forEach(function(id){
+   var el=document.getElementById(id);
+   if(el)el.value=(ids[id]===null||ids[id]===undefined)?'':String(ids[id]);
+ });
+ var tgEl=document.getElementById('p5tanggal');
+ if(tgEl){
+   if(r[1]){
+     try{
+       var d=new Date(r[1]);
+       tgEl.value=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
+     }catch(e){tgEl.value='';}
+   }else{tgEl.value='';}
+ }
+ document.querySelectorAll('.multi').forEach(function(cb){cb.checked=false;});
+ if(r[8]&&String(r[8]).length>0){
+   String(r[8]).split(';').forEach(function(id){
+     var el=document.getElementById(id);if(el)el.checked=true;
+   });
+ }
+ p5Kunci();
+}
+function p5Kunci(){
+ p5Aktif(false,false);
+ document.getElementById('p5pasien').hidden=true;
+ document.getElementById('p5namahidden').hidden=false;
+ if(p5Nama&&!document.getElementById('p5namahidden').value)
+   document.getElementById('p5namahidden').value=p5Nama;
+ document.getElementById('p5simpan').hidden=true;
+ document.getElementById('p5update').hidden=false;
+ document.getElementById('p5nomor').disabled=false;
+ document.getElementById('p5nmr').disabled=false;
+ p5ReqShow(false);
+ p5SetHint('Mode lihat — klik Perbarui untuk mengedit');
+ p5Edit=false;
+}
+function p5Perbarui(){
+ ['p5nomor','p5tanggal','p5dinas','p5pj','p5pp'].forEach(function(id){
+   document.getElementById(id).disabled=true;
+ });
+ ['p5bed','p5diagnosis','p5laporan'].forEach(function(id){
+   document.getElementById(id).disabled=false;
+ });
+ document.querySelectorAll('.multi').forEach(function(cb){cb.disabled=false;});
+ document.getElementById('p5simpan').hidden=false;
+ document.getElementById('p5update').hidden=true;
+ p5ReqShow(false);
+ p5SetHint('Mode edit — ubah data lalu klik Simpan');
+ p5Edit=true;
+}
+function p5Tambah(params){
+ p5Bersih();p5Nama='';
+ document.getElementById('p5nomor').value=p5Total+1;
+ p5Aktif(true,true);
+ document.getElementById('p5nomor').disabled=true;
+ document.getElementById('p5simpan').hidden=false;
+ document.getElementById('p5update').hidden=true;
+ p5ReqShow(true);
+ p5SetHint('Mode input baru — isi data lalu klik Simpan');
+ p5Edit=true;
+ if(params){
+   var tgEl=document.getElementById('p5tanggal');if(tgEl)tgEl.value=params.hariIni||'';
+   var dnEl=document.getElementById('p5dinas');if(dnEl)dnEl.value=params.shift||'';
+   var nhEl=document.getElementById('p5namahidden');
+   if(nhEl){nhEl.value=params.namaPasien||'';nhEl.hidden=false;}
+   var psEl=document.getElementById('p5pasien');
+   if(psEl){psEl.hidden=true;psEl.disabled=true;}
+   p5Nama=params.namaPasien||'';
+   var p=params.dataPasien;
+   if(p){
+     var map={p5umur:p[14],p5harike:p[15],p5agama:p[6],
+              p5jaminan:p[8],p5dpjp:p[12],p5dpjplain:p[13],p5bed:p[11]};
+     Object.keys(map).forEach(function(id){
+       var el=document.getElementById(id);if(el)el.value=p5Fv(map[id]);
+     });
+   }
+ }else{
+   var psEl2=document.getElementById('p5pasien');
+   if(psEl2){psEl2.hidden=false;psEl2.disabled=false;}
+   var nhEl2=document.getElementById('p5namahidden');
+   if(nhEl2)nhEl2.hidden=true;
+   psEl2.onchange=p5AmbilPasien;
+ }
+}
+function p5Simpan(){
+ var ui=p5Kumpul();
+ if(!ui.nomor||!ui.tanggal||!ui.dinas||!ui.pj||!ui.pasien||!ui.pp){
+   toast('Ada data wajib yang belum diisi.','err');return;
+ }
+ p5Nama=ui.pasien;loading(true);
+ google.script.run
+   .withSuccessHandler(function(){
+     if(ui.nomor>p5Total)p5Total=ui.nomor;
+     p5Kunci();
+     var nhEl=document.getElementById('p5namahidden');
+     if(nhEl&&p5Nama)nhEl.value=p5Nama;
+     p5NavUpdate(ui.nomor);
+     toast('Data berhasil disimpan.','ok');
+     loading(false);
+     loaded.p1=false;
+   })
+   .withFailureHandler(function(e){loading(false);errH(e);})
+   .simpandisheet(ui);
+}
+function p5AmbilPasien(){
+ var nama=document.getElementById('p5pasien').value;if(!nama)return;
+ google.script.run
+   .withSuccessHandler(function(h){
+     var p=JSON.parse(h);if(!p)return;
+     var map={p5umur:p[14],p5harike:p[15],p5agama:p[6],
+              p5jaminan:p[8],p5dpjp:p[12],p5dpjplain:p[13],p5bed:p[11]};
+     Object.keys(map).forEach(function(id){
+       var el=document.getElementById(id);if(el)el.value=p5Fv(map[id]);
+     });
+   })
+   .withFailureHandler(errH)
+   .umuragamajaminan(nama);
+}
+function p5Aktif(a,inc){
+ ['p5tanggal','p5dinas','p5pj','p5pp','p5bed','p5diagnosis','p5laporan'].forEach(function(id){
+   var el=document.getElementById(id);if(el)el.disabled=!a;
+ });
+ if(inc){var ps=document.getElementById('p5pasien');if(ps)ps.disabled=!a;}
+ document.querySelectorAll('.multi').forEach(function(cb){cb.disabled=!a;});
+}
+function p5Fv(v){
+ if(v instanceof Date)return v.getFullYear()+'-'+('0'+(v.getMonth()+1)).slice(-2)+'-'+('0'+v.getDate()).slice(-2);
+ return String(v===null||v===undefined?'':v);
+}
+function p5Kumpul(){
+ var dr=!document.getElementById('p5pasien').hidden;
+ var ui={};
+ ui.pasien=dr?document.getElementById('p5pasien').value
+             :(document.getElementById('p5namahidden').value||p5Nama);
+ ui.nomor=parseInt(document.getElementById('p5nomor').value);
+ ui.tanggal=document.getElementById('p5tanggal').value;
+ ui.dinas=document.getElementById('p5dinas').value;
+ ui.pj=document.getElementById('p5pj').value;
+ ui.pp=document.getElementById('p5pp').value;
+ ui.diagnosis=document.getElementById('p5diagnosis').value;
+ ui.laporan=document.getElementById('p5laporan').value;
+ ui.agama=document.getElementById('p5agama').value;
+ ui.jaminan=document.getElementById('p5jaminan').value;
+ ui.dpjp=document.getElementById('p5dpjp').value;
+ ui.dpjplain=document.getElementById('p5dpjplain').value;
+ ui.umur=document.getElementById('p5umur').value;
+ ui.harike=document.getElementById('p5harike').value;
+ ui.bed=document.getElementById('p5bed').value;
+ ui.alatmedik=Array.from(document.querySelectorAll('.multi:checked'))
+   .map(function(e){return e.value;}).join(';');
+ return ui;
+}
+function p5Bersih(){
+ ['p5nomor','p5tanggal','p5umur','p5harike','p5agama','p5jaminan',
+  'p5dpjp','p5dpjplain','p5laporan','p5diagnosis','p5namahidden'].forEach(function(id){
+   var el=document.getElementById(id);if(el)el.value='';
+ });
+ ['p5dinas','p5pj','p5pp','p5pasien','p5bed'].forEach(function(id){
+   var el=document.getElementById(id);if(el)el.value='';
+ });
+ document.querySelectorAll('.multi').forEach(function(cb){cb.checked=false;});
+}
+function p5ReqShow(v){
+ document.querySelectorAll('.req').forEach(function(e){e.style.display=v?'inline':'none';});
+}
+function p5SetHint(t){var e=document.getElementById('p5hint');if(e)e.textContent=t;}
+function p5Navigasi(arah){p5Nav(arah);}
+</script>
