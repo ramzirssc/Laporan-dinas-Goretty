@@ -198,7 +198,13 @@ document.addEventListener('DOMContentLoaded',function(){
   document.getElementById('tbar-tgl').textContent=h+', '+d.getDate()+' '+b+' '+d.getFullYear();
   var startPage ='<?= initPage ?>';
   var startNomor=parseInt('<?= initNomor ?>')||0;
-  if(startPage==='5'&&startNomor>0){
+  var startNew  ='<?= initNew ?>';
+  var startNama = <?!= initNamaJson ?>;
+  var startShift= <?!= initShiftJson ?>;
+  if(startNew==='1' && startNama){
+    gotoPage('p5',{isNew:true,namaPasien:startNama,shift:startShift,hariIni:ymd(new Date())});
+    loaded.p5=true;
+  } else if(startPage==='5'&&startNomor>0){
     gotoPage('p5',{viewNomor:startNomor});loaded.p5=true;
   } else {
     initP1();loaded.p1=true;

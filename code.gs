@@ -41,6 +41,9 @@ function doGet(e) {
   var tmpl = HtmlService.createTemplateFromFile("index");
   tmpl.initPage  = (e&&e.parameter&&e.parameter.p) ? String(e.parameter.p) : '1';
   tmpl.initNomor = (e&&e.parameter&&e.parameter.n) ? String(e.parameter.n) : '0';
+  tmpl.initNew       = (e&&e.parameter&&e.parameter.nw) ? '1' : '0';
+  tmpl.initNamaJson  = JSON.stringify((e&&e.parameter&&e.parameter.nm) ? String(e.parameter.nm) : '');
+  tmpl.initShiftJson = JSON.stringify((e&&e.parameter&&e.parameter.sh) ? String(e.parameter.sh) : '');
   return tmpl.evaluate()
     .setTitle("Laporan Dinas Goretty")
     .addMetaTag("viewport","width=device-width,initial-scale=1")
