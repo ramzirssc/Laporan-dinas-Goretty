@@ -203,8 +203,8 @@ function renderP1(raw){
               sh+='<span class="'+badgeCls+'" onclick="lihatLaporanTab('+no+')">'
                  +'#'+no+'<span class="lap-sm">'+s.label+'</span></span> ';
             }else{
-              sh+='<button class="bs '+s.cls+'" onclick="tulisLaporan('
-                 +JSON.stringify(p.nama)+','+JSON.stringify(s.label)+','+JSON.stringify(hariIni)+')">'
+              sh+='<button class="bs '+s.cls+'" onclick="'
+                 +'tulisLaporan('+p1JsArg(p.nama)+','+p1JsArg(s.label)+','+p1JsArg(hariIni)+')">'
                  +s.label+'</button> ';
             }
           });
@@ -239,7 +239,26 @@ function lihatLaporanTab(no){
     .getWebAppUrl();
 }
 function tulisLaporan(nama,shift,hariIni){
-  gotoPage('p5',{isNew:true,namaPasien:nama,shift:shift,hariIni:hariIni});
+  // Buka tab baru berisi form laporan baru (nama/tanggal/shift terisi).
+  google.script.run
+    .withSuccessHandler(function(url){
+      if(url){
+        window.open(url+'?p=5&nw=1&nm='+encodeURIComponent(nama)+'&sh='+encodeURIComponent(shift),'_blank');
+      }else{
+        gotoPage('p5',{isNew:true,namaPasien:nama,shift:shift,hariIni:hariIni});
+      }
+    })
+    .withFailureHandler(function(){
+      gotoPage('p5',{isNew:true,namaPasien:nama,shift:shift,hariIni:hariIni});
+    })
+    .getWebAppUrl();
 }
 function escP1(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+// Bungkus argumen string sebagai literal JS aman di dalam atribut onclick (berkutip ganda).
+function p1JsArg(s){
+  return "'"+String(s==null?'':s)
+    .replace(/\\/g,'\\\\').replace(/'/g,"\\'")
+    .replace(/&/g,'&amp;').replace(/"/g,'&quot;')
+    .replace(/</g,'&lt;').replace(/>/g,'&gt;')+"'";
+}
 </script>

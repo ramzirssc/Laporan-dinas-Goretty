@@ -125,6 +125,7 @@
           <button class="btn btn-primary" onclick="p3Cari()">🔍 Cari</button>
           <button class="btn btn-ghost"   onclick="p3Reset()">Reset</button>
           <button class="btn btn-outline" onclick="p3Cetak()" style="gap:5px">🖨 Cetak PDF</button>
+          <button class="btn btn-ghost"   onclick="p3Refresh()" style="gap:5px">↻ Refresh</button>
         </div>
       </div>
     </div>
@@ -226,6 +227,8 @@ function renderP3(raw){
     tr.appendChild(t3);
 
     var t4=document.createElement('td');
+    t4.id='p3-diag-cell-'+r.nomor;
+    t4.setAttribute('data-raw',r.diagnosis||'');
     t4.innerHTML=r.diagnosis?'<div class="lap-txt">'+esc(r.diagnosis)+'</div>':'<span class="no-lap">—</span>';
     tr.appendChild(t4);
 
@@ -244,39 +247,54 @@ function renderP3(raw){
   });
 }
 
-// ── Inline edit: hanya isi laporan ──
+// ── Inline edit: diagnosis (kolom G) DAN isi laporan (kolom H) bersamaan ──
 function p3StartEdit(nomor){
-  var cell=document.getElementById('p3-lap-cell-'+nomor);
-  if(!cell)return;
-  var rawText=cell.getAttribute('data-raw')||'';
-  cell.innerHTML='<textarea class="lap-edit-ta" id="p3-ta-'+nomor+'">'+esc(rawText)+'</textarea>';
+  var dCell=document.getElementById('p3-diag-cell-'+nomor);
+  var lCell=document.getElementById('p3-lap-cell-'+nomor);
+  if(!dCell||!lCell)return;
+  // Tinggi textarea = mendekati tinggi baris pasien; sama untuk diagnosis & laporan
+  var tr=lCell.parentElement;
+  var h=Math.max(120,(tr?tr.offsetHeight:120)-26);
+  var dRaw=dCell.getAttribute('data-raw')||'';
+  var lRaw=lCell.getAttribute('data-raw')||'';
+  dCell.innerHTML='<textarea class="lap-edit-ta" id="p3-ta-diag-'+nomor+'" style="height:'+h+'px">'+esc(dRaw)+'</textarea>';
+  lCell.innerHTML='<textarea class="lap-edit-ta" id="p3-ta-lap-'+nomor+'" style="height:'+h+'px">'+esc(lRaw)+'</textarea>';
   document.getElementById('p3-edit-'+nomor).style.display='none';
   document.getElementById('p3-save-'+nomor).style.display='block';
-  var ta=document.getElementById('p3-ta-'+nomor);
+  var ta=document.getElementById('p3-ta-lap-'+nomor);
   if(ta){ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);}
 }
 
 function p3SaveEdit(nomor){
-  var ta=document.getElementById('p3-ta-'+nomor);
-  if(!ta)return;
-  var newText=ta.value;
+  var dTa=document.getElementById('p3-ta-diag-'+nomor);
+  var lTa=document.getElementById('p3-ta-lap-'+nomor);
+  if(!dTa||!lTa)return;
+  var dText=dTa.value, lText=lTa.value;
   loading(true);
   google.script.run
-    .withSuccessHandler(function(){
+    .withSuccessHandler(function(raw){
       loading(false);
-      var cell=document.getElementById('p3-lap-cell-'+nomor);
-      cell.setAttribute('data-raw',newText);
-      cell.innerHTML=newText?'<div class="lap-txt">'+esc(newText)+'</div>':'<span class="no-lap">—</span>';
+      var res;try{res=JSON.parse(raw);}catch(e){res={ok:true};}
+      if(res&&res.ok===false){
+        toast('Gagal memperbarui (#'+nomor+'): '+(res.alasan||'tidak diketahui'),'err');return;
+      }
+      var dCell=document.getElementById('p3-diag-cell-'+nomor);
+      var lCell=document.getElementById('p3-lap-cell-'+nomor);
+      dCell.setAttribute('data-raw',dText);
+      dCell.innerHTML=dText?'<div class="lap-txt">'+esc(dText)+'</div>':'<span class="no-lap">—</span>';
+      lCell.setAttribute('data-raw',lText);
+      lCell.innerHTML=lText?'<div class="lap-txt">'+esc(lText)+'</div>':'<span class="no-lap">—</span>';
       document.getElementById('p3-edit-'+nomor).style.display='block';
       document.getElementById('p3-save-'+nomor).style.display='none';
-      // Update data lokal
       var rec=p3c.find(function(r){return r.nomor==nomor;});
-      if(rec)rec.laporan=newText;
+      if(rec){rec.diagnosis=dText;rec.laporan=lText;}
       toast('Laporan #'+nomor+' berhasil diperbarui.','ok');
     })
     .withFailureHandler(function(e){loading(false);errH(e);})
-    .updateLaporan(nomor,newText);
+    .updateLaporan(nomor,lText,dText);   // §6 — kirim isiLaporan DAN diagnosis
 }
+
+function p3Refresh(){updNama();p3Cari();}
 
 function p3Cetak(){
   // Update info header cetak berdasarkan filter aktif

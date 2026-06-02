@@ -41,6 +41,9 @@ function doGet(e) {
   var tmpl = HtmlService.createTemplateFromFile("index");
   tmpl.initPage  = (e&&e.parameter&&e.parameter.p) ? String(e.parameter.p) : '1';
   tmpl.initNomor = (e&&e.parameter&&e.parameter.n) ? String(e.parameter.n) : '0';
+  tmpl.initNew       = (e&&e.parameter&&e.parameter.nw) ? '1' : '0';
+  tmpl.initNamaJson  = JSON.stringify((e&&e.parameter&&e.parameter.nm) ? String(e.parameter.nm) : '');
+  tmpl.initShiftJson = JSON.stringify((e&&e.parameter&&e.parameter.sh) ? String(e.parameter.sh) : '');
   return tmpl.evaluate()
     .setTitle("Laporan Dinas Goretty")
     .addMetaTag("viewport","width=device-width,initial-scale=1")
@@ -194,9 +197,18 @@ function getLaporan(filter) {
   }));
 }
 
-function updateLaporan(nomor, isiLaporan) {
-  ws1.getRange(Number(nomor)+1, 8).setValue(isiLaporan);
+// §6 — update inline dari Page3. Tanda tangan WAJIB 3-argumen.
+// Kolom 8 (H)=isiLaporan selalu; kolom 7 (G)=diagnosis HANYA bila diberi
+// (agar pemanggil yang tidak mengubah diagnosis tidak menimpa).
+function updateLaporan(nomor, isiLaporan, diagnosis) {
+  var baris = _cariRowByNomor_(nomor);
+  if(baris < 0) return JSON.stringify({ok:false, alasan:'tidak_ditemukan'});
+  ws1.getRange(baris, 8).setValue(isiLaporan);
+  if(diagnosis !== undefined && diagnosis !== null){
+    ws1.getRange(baris, 7).setValue(diagnosis);
+  }
   CacheService.getScriptCache().removeAll(['p1_data','init_data']);
+  return JSON.stringify({ok:true, nomor:Number(nomor)});
 }
 
 function getNamaPasienDalamRentang(tm, ta) {
@@ -351,19 +363,75 @@ function getInitialData() {
   var cache = CacheService.getScriptCache();
   var cached = cache.get('init_data');
   if(cached) return cached;
-  var total = ws1.getLastRow()-1;
+  var total = baristerakhir();                 // §4 — max kolom A, BUKAN getLastRow()-1
   if(total<1) return JSON.stringify({total:0, baris:[[]]});
-  var hasil = JSON.stringify({total:total, baris:ws1.getRange(ws1.getLastRow(),1,1,17).getValues()});
+  var baris = _cariRowByNomor_(total);         // baris dengan nomor terbesar (posisi ≠ nomor)
+  var data = (baris>0) ? ws1.getRange(baris,1,1,17).getValues() : [[]];
+  var hasil = JSON.stringify({total:total, baris:data});
   try{cache.put('init_data', hasil, 45);}catch(e){}
   return hasil;
 }
 
 function caridata(record) {
   if(!record||record==='') return '';
-  return JSON.stringify(ws1.getRange(Number(record)+1,1,1,17).getValues());
+  var baris = _cariRowByNomor_(record);        // §5 — cari via nomor, bukan posisi baris
+  if(baris<0) return '';
+  return JSON.stringify(ws1.getRange(baris,1,1,17).getValues());
 }
 
-function baristerakhir() { return ws1.getLastRow()-1; }
+// §4 — Sumber kebenaran nomor = nomor TERBESAR di kolom A.
+// Tahan terhadap ArrayFormula kolom R yang menggembungkan getLastRow()
+// dan terhadap baris kosong tersisa di bawah.
+function baristerakhir() {
+  var lr = ws1.getLastRow();
+  if(lr < 2) return 0;
+  var col = ws1.getRange(2, 1, lr - 1, 1).getValues(); // baca kolom A sekaligus
+  var maxN = 0;
+  for(var i = 0; i < col.length; i++) {
+    var v = Number(col[i][0]);
+    if(v > maxN) maxN = v;
+  }
+  return maxN;
+}
+
+// §5 — kembalikan nomor baris aktual (1-based) untuk sebuah NOMOR laporan, atau -1.
+// Dipakai semua operasi edit/baca-per-nomor (posisi ≠ nomor setelah arsip/edit).
+function _cariRowByNomor_(nomor) {
+  var lr = ws1.getLastRow();
+  if(lr < 2) return -1;
+  var col = ws1.getRange(2, 1, lr - 1, 1).getValues();
+  var target = Number(nomor);
+  for(var i = 0; i < col.length; i++) {
+    if(Number(col[i][0]) === target) return i + 2; // +2: offset header + 0-based
+  }
+  return -1;
+}
+
+// §5 — cek apakah kombinasi pasien+tanggal+shift sudah ada.
+// Kembalikan {count, nomor(existing pertama)}.
+function cekDuplikatLaporan(pasien, tanggal, shift) {
+  var lr = ws1.getLastRow();
+  if(lr < 2) return {count:0, nomor:0};
+  var tz = Session.getScriptTimeZone();
+  var data = ws1.getRange(2, 1, lr - 1, 5).getValues(); // A..E: nomor,tgl,shift,pj,pasien
+  var pTgt  = String(pasien||'').toLowerCase().trim();
+  var tgTgt = String(tanggal||'').substring(0,10);
+  var sTgt  = String(shift||'').toLowerCase().trim();
+  var count = 0, nomor = 0;
+  for(var i = 0; i < data.length; i++) {
+    var r = data[i];
+    if(!r[0]) continue;
+    if(String(r[4]||'').toLowerCase().trim() !== pTgt) continue;
+    var d = '';
+    try{ d = Utilities.formatDate(new Date(r[1]), tz, 'yyyy-MM-dd'); }
+    catch(e){ d = String(r[1]).substring(0,10); }
+    if(d !== tgTgt) continue;
+    if(String(r[2]||'').toLowerCase().trim() !== sTgt) continue;
+    count++;
+    if(!nomor) nomor = r[0];
+  }
+  return {count:count, nomor:nomor};
+}
 
 function umuragamajaminan(sourcepasien) {
   var rows = ws2.getRange(2,1,Math.max(ws2.getLastRow()-1,1),16).getValues();
@@ -372,20 +440,151 @@ function umuragamajaminan(sourcepasien) {
 }
 
 function getNomorBaruDanDataPasien(namaPasien, shift) {
-  var n = ws1.getLastRow();
+  var n = baristerakhir() + 1;                 // §4 — preview saja; server tetap generate ulang saat simpan
   var rows = ws2.getRange(2,1,Math.max(ws2.getLastRow()-1,1),16).getValues();
   var b = rows.find(function(r){return r[1]==namaPasien;});
   return JSON.stringify({nomorBaru:n, dataPasien:b||null, shift:shift});
 }
 
+// Daftar nama pasien hari ini (dari ws2 kolom B) — untuk dropdown Page5.
+function getPasienHariIniNames() {
+  var out = [];
+  try {
+    var lr = ws2.getLastRow();
+    if(lr >= 2) {
+      ws2.getRange(2,2,lr-1,1).getValues().forEach(function(r){
+        var n = String(r[0]||'').trim();
+        if(n && out.indexOf(n) < 0) out.push(n);
+      });
+    }
+  } catch(e) {}
+  return JSON.stringify(out);
+}
+
+// Cari laporan berdasarkan kombinasi tanggal+nama+shift. Kembalikan baris (JSON array) atau ''.
+function getLaporanByTNS(nama, tanggal, shift) {
+  var dup = cekDuplikatLaporan(nama, tanggal, shift);
+  if(dup.count < 1) return '';
+  var baris = _cariRowByNomor_(dup.nomor);
+  if(baris < 0) return '';
+  return JSON.stringify(ws1.getRange(baris,1,1,17).getValues());
+}
+
+// §5 — Penyimpanan aman. WAJIB: LockService + cek duplikat server + nomor server.
+// Selalu kembalikan JSON string. Bersihkan cache p1_data/init_data.
 function simpandisheet(ui) {
-  var total = baristerakhir(), baris = Number(ui.nomor)+1;
-  var row = [ui.nomor,ui.tanggal,ui.dinas,ui.pj,ui.pasien,ui.pp,
-             ui.diagnosis,ui.laporan,ui.alatmedik,new Date(),
-             ui.agama,ui.jaminan,ui.dpjp,ui.dpjplain,ui.umur,ui.harike,ui.bed];
-  if(ui.nomor>total){ ws1.appendRow(row); }
-  else{ ws1.getRange(baris,1,1,17).setValues([row]); }
-  CacheService.getScriptCache().removeAll(['p1_data','init_data']);
+  var lock = LockService.getScriptLock();
+  try {
+    if(!lock.tryLock(20000)) return JSON.stringify({ok:false, alasan:'sibuk'});
+  } catch(e) {
+    return JSON.stringify({ok:false, alasan:'sibuk'});
+  }
+  try {
+    var isBaru = (ui.isBaru === true || ui.isBaru === 'true'); // 2 — dari client, jangan tebak dari nomor
+
+    if(isBaru) {
+      // 3a — tolak jika kombinasi pasien+tanggal+shift sudah ada
+      var dup = cekDuplikatLaporan(ui.pasien, ui.tanggal, ui.dinas);
+      if(dup.count > 0) return JSON.stringify({ok:false, alasan:'duplikat', nomor:dup.nomor});
+      // 3b — nomor digenerate di SERVER, abaikan ui.nomor
+      var nomorBaru = baristerakhir() + 1;
+      var row = [nomorBaru,ui.tanggal,ui.dinas,ui.pj,ui.pasien,ui.pp,
+                 ui.diagnosis,ui.laporan,ui.alatmedik,new Date(),
+                 ui.agama,ui.jaminan,ui.dpjp,ui.dpjplain,ui.umur,ui.harike,ui.bed];
+      ws1.appendRow(row); // 3c — tulis A–Q (17 kolom); kolom R diisi ArrayFormula otomatis
+      CacheService.getScriptCache().removeAll(['p1_data','init_data']);
+      return JSON.stringify({ok:true, nomor:nomorBaru, mode:'baru'});
+    } else {
+      // 4 — edit: cari baris via nomor; jangan buat baris baru bila tak ketemu
+      var baris = _cariRowByNomor_(ui.nomor);
+      if(baris < 0) return JSON.stringify({ok:false, alasan:'tidak_ditemukan'});
+      var rowE = [ui.nomor,ui.tanggal,ui.dinas,ui.pj,ui.pasien,ui.pp,
+                  ui.diagnosis,ui.laporan,ui.alatmedik,new Date(),
+                  ui.agama,ui.jaminan,ui.dpjp,ui.dpjplain,ui.umur,ui.harike,ui.bed];
+      ws1.getRange(baris,1,1,17).setValues([rowE]);
+      CacheService.getScriptCache().removeAll(['p1_data','init_data']);
+      return JSON.stringify({ok:true, nomor:ui.nomor, mode:'edit'});
+    }
+  } finally {
+    lock.releaseLock(); // 1 — selalu lepas lock
+  }
+}
+
+// §7 — Diagnosis & alat medik dari 1 shift dinas SEBELUMNYA untuk pasien sama.
+// Urutan harian: Pagi → Sore → Malam.
+//   Sore  → ambil Pagi  (hari sama)
+//   Malam → ambil Sore  (hari sama)
+//   Pagi  → ambil Malam (hari SEBELUMNYA)
+// _prevShiftData_ kembalikan {diagnosis, alatmedik, bed} dari 1 shift sebelumnya.
+function _prevShiftData_(nama, tanggal, shift) {
+  var kosong = {diagnosis:'', alatmedik:'', bed:''};
+  var lr = ws1.getLastRow();
+  if(lr < 2) return kosong;
+  var tz = Session.getScriptTimeZone();
+  var sh = String(shift||'').toLowerCase().trim();
+  var tgtTgl = String(tanggal||'').substring(0,10);
+  var prevShift = '', prevTgl = '';
+  if(sh === 'sore')       { prevShift = 'pagi';  prevTgl = tgtTgl; }
+  else if(sh === 'malam') { prevShift = 'sore';  prevTgl = tgtTgl; }
+  else if(sh === 'pagi')  {
+    prevShift = 'malam';
+    var d = new Date(tgtTgl); d.setDate(d.getDate() - 1);
+    prevTgl = Utilities.formatDate(d, tz, 'yyyy-MM-dd');
+  } else {
+    return kosong;
+  }
+  var data = ws1.getRange(2, 1, lr - 1, 17).getValues(); // A..Q (Q=Bed idx16)
+  var namaLc = String(nama||'').toLowerCase().trim();
+  var found = null;
+  for(var i = 0; i < data.length; i++) {
+    var r = data[i];
+    if(!r[0]) continue;
+    if(String(r[4]||'').toLowerCase().trim() !== namaLc) continue;
+    var d2 = '';
+    try{ d2 = Utilities.formatDate(new Date(r[1]), tz, 'yyyy-MM-dd'); }
+    catch(e){ d2 = String(r[1]).substring(0,10); }
+    if(d2 !== prevTgl) continue;
+    if(String(r[2]||'').toLowerCase().trim() !== prevShift) continue;
+    found = r; // ambil kemunculan terakhir di sheet
+  }
+  if(!found) return kosong;
+  return {diagnosis:String(found[6]||''), alatmedik:String(found[8]||''), bed:String(found[16]||'')};
+}
+
+function getDiagnosisShiftSebelumnya(nama, tanggal, shift) {
+  var p = _prevShiftData_(nama, tanggal, shift);
+  return JSON.stringify({diagnosis:p.diagnosis, alatmedik:p.alatmedik});
+}
+
+// SATU panggilan server untuk Page5: daftar nama + data pasien + data shift
+// sebelumnya (diagnosis/alat/bed) + laporan existing (cek duplikat).
+// Tujuan: hindari beberapa server call beruntun (nama → data → cek duplikat).
+function getPaketLaporan(nama, tanggal, shift) {
+  var tz = Session.getScriptTimeZone();
+  var today = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+  var out = { namaList:[], dataPasien:null, sebelumnya:{diagnosis:'',alatmedik:'',bed:''}, existing:null };
+
+  // 1) daftar nama: hari ini → ws2; tanggal lain → pasien dgn laporan tgl tsb
+  if(!tanggal || tanggal === today) out.namaList = JSON.parse(getPasienHariIniNames());
+  else                              out.namaList = JSON.parse(getNamaPasienDalamRentang(tanggal, tanggal));
+
+  if(!nama) return JSON.stringify(out);
+
+  // 2) data pasien dari ws2
+  var rows = ws2.getRange(2,1,Math.max(ws2.getLastRow()-1,1),16).getValues();
+  var b = rows.find(function(r){return r[1]==nama;});
+  out.dataPasien = b || null;
+
+  // 3) laporan existing (nama+tanggal+shift)
+  var dup = cekDuplikatLaporan(nama, tanggal, shift);
+  if(dup.count > 0) {
+    var baris = _cariRowByNomor_(dup.nomor);
+    if(baris > 0) out.existing = ws1.getRange(baris,1,1,17).getValues()[0];
+  }
+
+  // 4) data shift sebelumnya (diagnosis/alat/bed)
+  out.sebelumnya = _prevShiftData_(nama, tanggal, shift);
+  return JSON.stringify(out);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -469,7 +668,7 @@ function getDaftarDinas(tglMulai, tglAkhir) {
 //  Merge ada di workbook yang sama — tidak perlu openById
 // ═══════════════════════════════════════════════════════
 function getStatistikPage8(tahun, tglMulai, tglAkhir) {
-  var cacheKey = 'stat8_'+tahun+'_'+(tglMulai||'')+'_'+(tglAkhir||'');
+  var cacheKey = 'stat8v2_'+tahun+'_'+(tglMulai||'')+'_'+(tglAkhir||'');
   var cache = CacheService.getScriptCache();
   var hit = cache.get(cacheKey);
   if(hit) return hit;
@@ -522,33 +721,64 @@ function getStatistikPage8(tahun, tglMulai, tglAkhir) {
     if(!isNaN(lamaNum)&&lamaNum>0) lamaList.push(lamaNum);
   });
 
-  // Diagnosis (A=tanggal, B=diagnosis)
-  var diagYearMap={}, diagRangeMap={};
-  try {
-    var wsDiag = ss.getSheetByName('Diagnosis');
-    if(wsDiag && wsDiag.getLastRow()>1){
-      wsDiag.getRange(2,1,wsDiag.getLastRow()-1,2).getValues().forEach(function(r){
-        var tgl=toYMD(r[0]); var diag=String(r[1]||'').trim();
-        if(!tgl||!diag) return;
-        if(tgl.substring(0,4)===tahunStr) diagYearMap[diag]=(diagYearMap[diag]||0)+1;
-        if((!tglMulai||tgl>=tglMulai)&&(!tglAkhir||tgl<=tglAkhir)) diagRangeMap[diag]=(diagRangeMap[diag]||0)+1;
+  // §8 — Diagnosis & Alat Medik dihitung LANGSUNG dari ws1 (Laporan) dengan
+  // semantik "1 pasien 1 hitungan": ambil 1 baris per pasien (kemunculan paling
+  // awal berdasarkan tanggal kolom B). Tanggal pakai kolom B → filter date-precise
+  // (tahun & rentang). Tidak bergantung pada sheet Pivot.
+  function toYMDflex(v){
+    if(!v) return '';
+    if(v instanceof Date){ try{return Utilities.formatDate(v,tz,'yyyy-MM-dd');}catch(e){return'';} }
+    var s = String(v);
+    if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0,10);
+    try{ var d=new Date(s); if(!isNaN(d.getTime())) return Utilities.formatDate(d,tz,'yyyy-MM-dd'); }catch(e){}
+    return '';
+  }
+  var diagYearMap={}, diagRangeMap={}, alatYearMap={}, alatRangeMap={};
+  (function(){
+    var lr = ws1.getLastRow();
+    if(lr < 2) return;
+    var raw = ws1.getRange(2,1,lr-1,17).getValues(); // A..Q (B=tgl,E=nama,G=diag,I=alat)
+    // 1 baris per pasien = kemunculan paling awal (tanggal terkecil; ties → baris pertama)
+    var firstByPasien = {};
+    raw.forEach(function(r){
+      if(!r[0]) return;
+      var nama = String(r[4]||'').toLowerCase().trim();
+      if(!nama) return;
+      var tgl = toYMDflex(r[1]);
+      if(!tgl) return;
+      var prev = firstByPasien[nama];
+      if(!prev || tgl < prev.tgl){
+        firstByPasien[nama] = {tgl:tgl, diag:String(r[6]||''), alat:String(r[8]||'')};
+      }
+    });
+    Object.keys(firstByPasien).forEach(function(nm){
+      var o = firstByPasien[nm];
+      var inYear  = (o.tgl.substring(0,4) === tahunStr);
+      var inRange = (!tglMulai || o.tgl >= tglMulai) && (!tglAkhir || o.tgl <= tglAkhir);
+      if(!inYear && !inRange) return;
+      // diagnosis: bersihkan seperti kolom R (lowercase, sisakan huruf/angka/; /spasi)
+      var diagText = o.diag.toLowerCase().replace(/[^a-z0-9; ]/g,' ');
+      DIAGNOSIS_LIST.forEach(function(d){
+        if(diagText.indexOf(d) >= 0){
+          if(inYear)  diagYearMap[d]  = (diagYearMap[d]||0)  + 1;
+          if(inRange) diagRangeMap[d] = (diagRangeMap[d]||0) + 1;
+        }
       });
-    }
-  } catch(e) {}
-
-  // Alat Medik (A=tanggal, C=alat)
-  var alatYearMap={}, alatRangeMap={};
-  try {
-    var wsAlat = ss.getSheetByName('Alat Medik');
-    if(wsAlat && wsAlat.getLastRow()>1){
-      wsAlat.getRange(2,1,wsAlat.getLastRow()-1,3).getValues().forEach(function(r){
-        var tgl=toYMD(r[0]); var alat=String(r[2]||'').trim();
-        if(!tgl||!alat) return;
-        if(tgl.substring(0,4)===tahunStr) alatYearMap[alat]=(alatYearMap[alat]||0)+1;
-        if((!tglMulai||tgl>=tglMulai)&&(!tglAkhir||tgl<=tglAkhir)) alatRangeMap[alat]=(alatRangeMap[alat]||0)+1;
+      // alat medik: kolom I dipisah ; atau ,
+      var alatArr = String(o.alat).split(/[;,]/).map(function(a){return a.trim().toLowerCase();});
+      ALAT_LIST.forEach(function(a){
+        var disp    = (a.indexOf('|')>=0) ? a.split('|')[1] : a;
+        var aliases = a.toLowerCase().split('|');
+        for(var k=0;k<aliases.length;k++){
+          if(alatArr.indexOf(aliases[k]) >= 0){
+            if(inYear)  alatYearMap[disp]  = (alatYearMap[disp]||0)  + 1;
+            if(inRange) alatRangeMap[disp] = (alatRangeMap[disp]||0) + 1;
+            break;
+          }
+        }
       });
-    }
-  } catch(e) {}
+    });
+  })();
 
   function stats(arr){
     if(!arr.length) return{avg:0,max:0,min:0,n:0};
@@ -584,4 +814,400 @@ function getStatistikPage8(tahun, tglMulai, tglAkhir) {
 
   try{cache.put(cacheKey,hasil,600);}catch(e){}
   return hasil;
+}
+
+// ═══════════════════════════════════════════════════════
+//  REFRESH PIVOT (§8) — agregasi bulanan dari ws1.
+//  CATATAN: sistem ini TIDAK memakai arsip (data Goretty relatif kecil),
+//  jadi pivot dihitung 100% dari sheet Laporan (ws1).
+//  Diagnosis & alat dihitung HANYA dari baris yang kolom R (DiagnosisEdited)
+//  terisi → otomatis 1 pasien 1 hitungan.
+// ═══════════════════════════════════════════════════════
+// Daftar diagnosis sudah dirapikan & di-dedupe dari README (urutan kemunculan pertama).
+const DIAGNOSIS_LIST = [
+  'ards','pneumonia','influenza','hiponatremia','peritonitis','post op','ispa',
+  'viral infection','hmd','prematur','hiperbilirubin','dhf','ensefalopati',
+  'low intake','dss','dehidrasi','hipoglikemia','sepsis','rd','ttn','hipokalemia',
+  'ivh','ich','kejang demam','bronchopneumonia','bp','syok','hiperglikemia','demam',
+  'hiperpireksia','nkb','hyaline membrane disease','isk','hipoglikemi','gea','dengue',
+  'snad','ileus','tutup','respiratory distress','ependimoma','astma','sifilis',
+  'pertusis','bronkiolitis','anemia'
+];
+
+const ALAT_LIST = [
+  'CAPD','Chemoport','Cimino','CPAP','CRRT','CVC',
+  'Doublelumen|Double lumen HD','Drain','Facemask','HFNC','ICON','Kateter',
+  'Nasalkanul','Nefrostomi','NGT','NIV','PICC',
+  'Trakeostomi','Triplelumen|Triple lumen HD','Umbicath','Ventilator','WSD'
+];
+
+function refreshPivot() {
+  var tz = Session.getScriptTimeZone();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // ── Kumpulkan semua baris dari ws1 (anti-dobel via nomor) ──
+  var semua = [];
+  var nomorTerpakai = {};
+  var lr1 = ws1.getLastRow();
+  if(lr1 >= 2) {
+    var raw1 = ws1.getRange(2, 1, lr1 - 1, 18).getValues(); // A..R
+    raw1.forEach(function(r) {
+      if(!r[0]) return;
+      var nomor = Number(r[0]);
+      if(nomorTerpakai[nomor]) return;
+      nomorTerpakai[nomor] = true;
+      semua.push({ nomor:nomor, tgl:r[1], diagEdited:String(r[17]||''), alat:String(r[8]||'') });
+    });
+  }
+
+  // ── Agregasi per bulan (yyyy-MM) ──
+  var bulanMap = {};
+  semua.forEach(function(o) {
+    if(!o.tgl) return;
+    var tglStr = (o.tgl instanceof Date)
+      ? Utilities.formatDate(o.tgl, tz, 'yyyy-MM')
+      : String(o.tgl).substring(0, 7);
+    if(!tglStr || tglStr.length < 7) return;
+
+    var diagTeks = String(o.diagEdited || '').toLowerCase().trim();
+    if(!diagTeks) return; // kolom R kosong → bukan baris pertama pasien → lewati
+
+    if(!bulanMap[tglStr]) {
+      var diagObj = {}, alatObj = {};
+      DIAGNOSIS_LIST.forEach(function(d) { diagObj[d] = 0; });
+      ALAT_LIST.forEach(function(a)      { alatObj[a] = 0; });
+      bulanMap[tglStr] = { diag: diagObj, alat: alatObj };
+    }
+    var bln = bulanMap[tglStr];
+
+    DIAGNOSIS_LIST.forEach(function(d) {
+      if(diagTeks.indexOf(d) >= 0) bln.diag[d]++;
+    });
+    var alatTeks = String(o.alat || '').trim();
+    if(alatTeks) {
+      var alatArr = alatTeks.split(/[;,]/).map(function(a) { return a.trim().toLowerCase(); });
+      ALAT_LIST.forEach(function(a) {
+        // dukung alias "id|label"
+        var aliases = a.toLowerCase().split('|');
+        for(var k = 0; k < aliases.length; k++) {
+          if(alatArr.indexOf(aliases[k]) >= 0) { bln.alat[a]++; break; }
+        }
+      });
+    }
+  });
+
+  var bulanList = Object.keys(bulanMap).sort(); // ASCENDING (lama → baru)
+
+  var totalDiag = {}, totalAlat = {};
+  DIAGNOSIS_LIST.forEach(function(d) { totalDiag[d] = 0; });
+  ALAT_LIST.forEach(function(a)      { totalAlat[a] = 0; });
+  bulanList.forEach(function(bln) {
+    DIAGNOSIS_LIST.forEach(function(d) { totalDiag[d] += bulanMap[bln].diag[d]; });
+    ALAT_LIST.forEach(function(a)      { totalAlat[a] += bulanMap[bln].alat[a]; });
+  });
+
+  var diagHeader = ['Bulan'].concat(DIAGNOSIS_LIST);
+  var alatHeader = ['Bulan'].concat(ALAT_LIST);
+  var diagData = bulanList.map(function(bln) {
+    var row = [new Date(bln + '-01')];
+    DIAGNOSIS_LIST.forEach(function(d) { row.push(bulanMap[bln].diag[d]); });
+    return row;
+  });
+  var alatData = bulanList.map(function(bln) {
+    var row = [new Date(bln + '-01')];
+    ALAT_LIST.forEach(function(a) { row.push(bulanMap[bln].alat[a]); });
+    return row;
+  });
+  var diagTotalRow = ['TOTAL'];
+  DIAGNOSIS_LIST.forEach(function(d) { diagTotalRow.push(totalDiag[d]); });
+  var alatTotalRow = ['TOTAL'];
+  ALAT_LIST.forEach(function(a) { alatTotalRow.push(totalAlat[a]); });
+  diagData.push(diagTotalRow);
+  alatData.push(alatTotalRow);
+
+  _tulisSheet_(ss, 'Pivot Diagnosis', diagHeader, diagData);
+  _tulisSheet_(ss, 'Pivot Alat Medik', alatHeader, alatData);
+  CacheService.getScriptCache().remove('stat8_pivot');
+}
+
+// Sekali-jalan untuk MEMULIHKAN pivot dari ws1.
+function pulihkanPivot() {
+  refreshPivot();
+  Logger.log('Pivot dipulihkan dari ws1. Cek sheet Pivot Diagnosis & Pivot Alat Medik.');
+}
+
+function _tulisSheet_(ss, namaSheet, header, dataRows) {
+  var sh = ss.getSheetByName(namaSheet);
+  if(!sh) { sh = ss.insertSheet(namaSheet); }
+  else    { sh.clearContents(); }
+  sh.getRange(1, 1, 1, header.length).setValues([header]);
+  if(dataRows.length > 0) {
+    sh.getRange(2, 1, dataRows.length, header.length).setValues(dataRows);
+  }
+  var nDataBaris = dataRows.length - 1; // baris terakhir = TOTAL (teks), jangan diformat tanggal
+  if(nDataBaris > 0) {
+    sh.getRange(2, 1, nDataBaris, 1).setNumberFormat('yyyy-MM');
+  }
+  sh.setFrozenRows(1);
+}
+
+function getPivotStatistik() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  function bacaSheet(namaSheet) {
+    var sh = ss.getSheetByName(namaSheet);
+    if(!sh || sh.getLastRow() < 2) return { header: [], rows: [] };
+    var all    = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getValues();
+    var header = all[0].map(function(h) { return String(h); });
+    var rows   = all.slice(1).map(function(r) {
+      var obj = {};
+      header.forEach(function(h, i) { obj[h] = r[i]; });
+      return obj;
+    });
+    return { header: header, rows: rows };
+  }
+  return JSON.stringify({
+    diagnosis: bacaSheet('Pivot Diagnosis'),
+    alatMedik: bacaSheet('Pivot Alat Medik')
+  });
+}
+
+// Pasang trigger harian refreshPivot jam 01:00 (jalankan sekali secara manual).
+function pasangTriggerMalam() {
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if(t.getHandlerFunction() === 'refreshPivot') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('refreshPivot').timeBased().atHour(1).everyDays(1).create();
+}
+
+// ═══════════════════════════════════════════════════════
+//  PAGE 9 — LOGBOOK PERAWAT GORETTY (READ-ONLY)
+//  Sumber: spreadsheet eksternal; HANYA membaca (tidak menulis apa pun).
+//  Semua posisi kolom terverifikasi (lihat techspec). 8 domain.
+// ═══════════════════════════════════════════════════════
+var LBG_SS_ID  = '11pJK2JfLt1Zv1iJN4YFSakGo65Yn4daw2hFm0DXJX1M';
+var LBG_SHEET  = 'Proses form';
+var LBG_LOOKUP = 'LookUp';
+
+var LBG_DOMAINS    = ["Oksigen","Obat","Cairan","TTV","Dokumen","Kebutuhan","Asuhan","Alat"];
+var LBG_TARGET_MAP = { "I":80, "II":80, "III":75, "IV":80, "V":43 };
+var LBG_PK_NUMBER  = { "I":1, "II":2, "III":3, "IV":4, "V":5 };
+
+// Indeks 0-based saat baca A:DC (kolom 1..107)
+var LBG_IDX_TGL    = 16;                       // Q  = Tanggal
+var LBG_IDX_NPK    = 17;                       // R  = NPK
+var LBG_FLAG_START = 19;                       // T  = flag domain pertama (0-based)
+var LBG_NDOMAIN    = 8;
+var LBG_IDX_NILAI  = [100,101,102,103,104];    // CW..DA = Jumlah PK 1..5 (0-based)
+var LBG_READ_NCOLS = 107;                      // baca A:DC
+
+// Konversi aman ke number (dukung "0,1125" bergaya Indonesia bila tersimpan teks).
+function lbGNum_(x) {
+  if(x === null || x === undefined || x === '') return 0;
+  if(typeof x === 'number') return isNaN(x) ? 0 : x;
+  var s = String(x).trim().replace(/\s/g,'');
+  if(!s) return 0;
+  if(s.indexOf(',') >= 0) s = s.replace(/\./g,'').replace(',', '.');
+  var n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+
+// Tanggal baris: kolom Q; fallback ke A (Timestamp).
+function lbGRowDate_(r) {
+  var q = r[LBG_IDX_TGL];
+  if(q instanceof Date) return q;
+  var a = r[0];
+  if(a instanceof Date) return a;
+  return null;
+}
+
+function lbGNow_(tz) {
+  return Utilities.formatDate(new Date(), tz, "yyyy-MM-dd'T'HH:mm:ssXXX");
+}
+
+// Master perawat: NPK(A)→{nama(B), pk(D)}
+function lbGLookup_() {
+  var map = {};
+  try {
+    var sh = SpreadsheetApp.openById(LBG_SS_ID).getSheetByName(LBG_LOOKUP);
+    if(!sh) return map;
+    var lr = sh.getLastRow();
+    if(lr < 2) return map;
+    var vals = sh.getRange(2, 1, lr - 1, 4).getValues(); // A:D
+    vals.forEach(function(r) {
+      var npk = String(r[0] == null ? '' : r[0]).trim();
+      if(!npk) return;
+      var nama = String(r[1] == null ? '' : r[1]).trim();
+      var pk   = String(r[3] == null ? '' : r[3]).trim().toUpperCase();
+      map[npk] = { nama: nama || npk, pk: pk || '?' };
+    });
+  } catch(e) {}
+  return map;
+}
+
+function getDaftarPerawatGoretty() {
+  var map = lbGLookup_();
+  var arr = Object.keys(map).map(function(npk) {
+    return { npk: npk, nama: map[npk].nama, pk: map[npk].pk };
+  });
+  arr.sort(function(a, b) { return String(a.nama).localeCompare(String(b.nama)); });
+  return JSON.stringify(arr);
+}
+
+function getTahunTersediaGoretty() {
+  var tz = Session.getScriptTimeZone();
+  var sh = SpreadsheetApp.openById(LBG_SS_ID).getSheetByName(LBG_SHEET);
+  if(!sh) return JSON.stringify([]);
+  var lr = sh.getLastRow();
+  if(lr < 2) return JSON.stringify([]);
+  var data = sh.getRange(2, 1, lr - 1, 17).getValues(); // A:Q (cukup untuk tanggal)
+  var set = {};
+  data.forEach(function(r) {
+    var d = lbGRowDate_(r);
+    if(d instanceof Date) {
+      var y = parseInt(Utilities.formatDate(d, tz, 'yyyy'), 10);
+      if(y) set[y] = true;
+    }
+  });
+  var years = Object.keys(set).map(Number).sort(function(a, b) { return b - a; });
+  return JSON.stringify(years);
+}
+
+function getAgregatTahunGoretty(tahun, force) {
+  tahun = parseInt(tahun, 10);
+  var cache = CacheService.getScriptCache();
+  var baseKey = 'agg_goretty_' + tahun;
+  if(!force) {
+    var got = lbGCacheGet_(cache, baseKey);
+    if(got) return got;
+  }
+  var hasil = lbGComputeTahun_(tahun);
+  lbGCachePut_(cache, baseKey, hasil, tahun);
+  return hasil;
+}
+
+function lbGComputeTahun_(tahun) {
+  var tz = Session.getScriptTimeZone();
+  var lookup = lbGLookup_();
+  var sh = SpreadsheetApp.openById(LBG_SS_ID).getSheetByName(LBG_SHEET);
+  if(!sh) return JSON.stringify({ tahun: tahun, generatedAt: lbGNow_(tz), bulanTersedia: [], rows: [] });
+  var lr = sh.getLastRow();
+  if(lr < 2) return JSON.stringify({ tahun: tahun, generatedAt: lbGNow_(tz), bulanTersedia: [], rows: [] });
+
+  var data = sh.getRange(2, 1, lr - 1, LBG_READ_NCOLS).getValues(); // A:DC
+  var agg = {};         // npk -> bulan -> {domain[8], nilaiPK[5], jumlahTindakan}
+  var bulanSet = {};
+
+  data.forEach(function(r) {
+    var d = lbGRowDate_(r);
+    if(!(d instanceof Date)) return;
+    if(parseInt(Utilities.formatDate(d, tz, 'yyyy'), 10) !== tahun) return;
+    var bulan = parseInt(Utilities.formatDate(d, tz, 'M'), 10); // 1..12
+    var npk = String(r[LBG_IDX_NPK] == null ? '' : r[LBG_IDX_NPK]).trim();
+    if(!npk) return; // edge: NPK kosong → tidak bisa diatribusikan
+
+    if(!agg[npk]) agg[npk] = {};
+    if(!agg[npk][bulan]) {
+      agg[npk][bulan] = { domain: [0,0,0,0,0,0,0,0], nilaiPK: [0,0,0,0,0], jumlahTindakan: 0 };
+    }
+    var slot = agg[npk][bulan];
+    for(var dm = 0; dm < LBG_NDOMAIN; dm++) {
+      var base = LBG_FLAG_START + dm * 5;
+      var dc = 0;
+      for(var k = 0; k < 5; k++) dc += lbGNum_(r[base + k]);
+      slot.domain[dm] += dc;
+      slot.jumlahTindakan += dc;
+    }
+    for(var n = 0; n < 5; n++) slot.nilaiPK[n] += lbGNum_(r[LBG_IDX_NILAI[n]]);
+    bulanSet[bulan] = true;
+  });
+
+  var rows = [];
+  Object.keys(agg).forEach(function(npk) {
+    var info = lookup[npk] || { nama: npk, pk: '?' };
+    var pkNumber = LBG_PK_NUMBER[info.pk] || null;
+    var target = (LBG_TARGET_MAP[info.pk] !== undefined) ? LBG_TARGET_MAP[info.pk] : '';
+    Object.keys(agg[npk]).forEach(function(bln) {
+      var s = agg[npk][bln];
+      var domObj = {};
+      for(var i = 0; i < LBG_NDOMAIN; i++) domObj[LBG_DOMAINS[i]] = s.domain[i];
+      var totalNilai = s.nilaiPK.reduce(function(a, b) { return a + b; }, 0);
+      rows.push({
+        npk: npk, nama: info.nama, pk: info.pk, pkNumber: pkNumber, target: target,
+        bulan: parseInt(bln, 10),
+        jumlahTindakan: s.jumlahTindakan,
+        domain: domObj,
+        nilaiPK: s.nilaiPK,
+        totalNilai: totalNilai,
+        nilaiSesuaiPK: pkNumber ? s.nilaiPK[pkNumber - 1] : 0
+      });
+    });
+  });
+  rows.sort(function(a, b) {
+    var c = String(a.nama).localeCompare(String(b.nama));
+    return c !== 0 ? c : a.bulan - b.bulan;
+  });
+  var bulanTersedia = Object.keys(bulanSet).map(Number).sort(function(a, b) { return a - b; });
+  return JSON.stringify({ tahun: tahun, generatedAt: lbGNow_(tz), bulanTersedia: bulanTersedia, rows: rows });
+}
+
+// ── Cache ber-chunk (payload bisa > 100KB/key) ──
+function lbGCachePut_(cache, baseKey, str, tahun) {
+  var tz = Session.getScriptTimeZone();
+  var curYear = parseInt(Utilities.formatDate(new Date(), tz, 'yyyy'), 10);
+  var ttl = (tahun === curYear) ? 1800 : 21600; // 30 menit / 6 jam
+  var CHUNK = 90000;
+  var n = Math.ceil(str.length / CHUNK) || 1;
+  var obj = {};
+  obj[baseKey + '_n'] = String(n);
+  for(var i = 0; i < n; i++) obj[baseKey + '_' + i] = str.substring(i * CHUNK, (i + 1) * CHUNK);
+  try { cache.putAll(obj, ttl); } catch(e) {}
+}
+function lbGCacheGet_(cache, baseKey) {
+  var nStr = cache.get(baseKey + '_n');
+  if(!nStr) return null;
+  var n = parseInt(nStr, 10);
+  if(!n) return null;
+  var keys = [];
+  for(var i = 0; i < n; i++) keys.push(baseKey + '_' + i);
+  var got = cache.getAll(keys);
+  var parts = [];
+  for(var j = 0; j < n; j++) {
+    var p = got[baseKey + '_' + j];
+    if(p == null) return null; // ada chunk hilang → anggap miss
+    parts.push(p);
+  }
+  return parts.join('');
+}
+
+// Helper validasi manual (read-only): rincian baris 1 perawat dalam setahun.
+function lbGDebugPerawat(npk, tahun) {
+  tahun = parseInt(tahun, 10);
+  var tz = Session.getScriptTimeZone();
+  var sh = SpreadsheetApp.openById(LBG_SS_ID).getSheetByName(LBG_SHEET);
+  if(!sh) return JSON.stringify([]);
+  var lr = sh.getLastRow();
+  if(lr < 2) return JSON.stringify([]);
+  var data = sh.getRange(2, 1, lr - 1, LBG_READ_NCOLS).getValues();
+  var out = [];
+  var tgt = String(npk).trim();
+  data.forEach(function(r, idx) {
+    if(String(r[LBG_IDX_NPK] == null ? '' : r[LBG_IDX_NPK]).trim() !== tgt) return;
+    var d = lbGRowDate_(r);
+    if(!(d instanceof Date)) return;
+    if(parseInt(Utilities.formatDate(d, tz, 'yyyy'), 10) !== tahun) return;
+    var dom = [];
+    for(var dm = 0; dm < LBG_NDOMAIN; dm++) {
+      var base = LBG_FLAG_START + dm * 5, c = 0;
+      for(var k = 0; k < 5; k++) c += lbGNum_(r[base + k]);
+      dom.push(c);
+    }
+    out.push({
+      row: idx + 2, bulan: parseInt(Utilities.formatDate(d, tz, 'M'), 10),
+      domain: dom,
+      nilaiPK: LBG_IDX_NILAI.map(function(i) { return lbGNum_(r[i]); }),
+      jumlahTindakanCV: lbGNum_(r[99]),   // CV
+      nilaiSesuaiPKdb: lbGNum_(r[105])    // DB
+    });
+  });
+  return JSON.stringify(out);
 }

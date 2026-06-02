@@ -161,6 +161,7 @@
         <div class="p4d-dd" id="p4d-dd"></div>
       </div>
       <button class="btn-print4" onclick="window.print()">🖨 Cetak PDF</button>
+      <button class="btn-print4" onclick="p4dRefresh()">↻ Refresh</button>
     </div>
     <!-- Bar nama terpilih dari search -->
     <div class="p4d-sel-bar" id="p4d-sel-bar">
@@ -440,4 +441,30 @@ function p4dRow(lbl,val){
   return'<div class="p4d-frow col1">'+fi(lbl,val)+'</div>';
 }
 function goToLap(n){gotoPage('p5',{viewNomor:n});}
+
+// Refresh: muat ulang tampilan aktif (data dibaca langsung dari server, tanpa cache).
+function p4dRefresh(){
+  if(p4dMode==='search'){
+    var nama=document.getElementById('p4d-search').value.trim();
+    if(nama){
+      document.getElementById('p4d-cnt').textContent='Memuat seluruh riwayat '+nama+'…';
+      document.getElementById('p4d-loader').style.display='block';
+      document.getElementById('p4d-content').innerHTML='';loading(true);
+      google.script.run
+        .withSuccessHandler(function(raw){
+          loading(false);document.getElementById('p4d-loader').style.display='none';
+          try{
+            var laps=JSON.parse(raw);
+            document.getElementById('p4d-cnt').textContent=laps.length+' laporan · seluruh riwayat · '+nama;
+            document.getElementById('p4d-content').innerHTML=laps.length
+              ?p4dBuildSeksi(nama,laps):'<div class="p4d-empty">📭 Tidak ada laporan</div>';
+          }catch(e){p4dShowErr(String(e));}
+        })
+        .withFailureHandler(function(e){loading(false);p4dShowErr(e&&e.message?e.message:String(e));})
+        .getAllLaporanPasien(nama);
+      return;
+    }
+  }
+  p4dLoadHariIni();
+}
 </script>
