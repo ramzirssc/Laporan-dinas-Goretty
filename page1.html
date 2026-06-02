@@ -156,10 +156,13 @@ function renderP1(raw){
     }
     document.getElementById('p1-loader').style.display='none';
     document.getElementById('p1-n').textContent=list.length;
-    var d=new Date();
-    var bl=['Januari','Februari','Maret','April','Mei','Juni',
-            'Juli','Agustus','September','Oktober','November','Desember'][d.getMonth()];
-    document.getElementById('p1-tgl').textContent=d.getDate()+' '+bl+' '+d.getFullYear();
+    var blArr=['Januari','Februari','Maret','April','Mei','Juni',
+            'Juli','Agustus','September','Oktober','November','Desember'];
+    if(hariIni){
+      var hp=hariIni.split('-');
+      document.getElementById('p1-tgl').textContent=
+        parseInt(hp[2],10)+' '+blArr[parseInt(hp[1],10)-1]+' '+hp[0];
+    }
     if(!list.length){document.getElementById('p1-empty').style.display='block';return;}
     if(!colDefs.length){
       document.getElementById('p1-loader').style.display='block';
@@ -243,7 +246,7 @@ function tulisLaporan(nama,shift,hariIni){
   google.script.run
     .withSuccessHandler(function(url){
       if(url){
-        window.open(url+'?p=5&nw=1&nm='+encodeURIComponent(nama)+'&sh='+encodeURIComponent(shift),'_blank');
+        window.open(url+'?p=5&nw=1&nm='+encodeURIComponent(nama)+'&sh='+encodeURIComponent(shift)+'&tg='+encodeURIComponent(hariIni),'_blank');
       }else{
         gotoPage('p5',{isNew:true,namaPasien:nama,shift:shift,hariIni:hariIni});
       }
