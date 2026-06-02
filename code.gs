@@ -44,6 +44,7 @@ function doGet(e) {
   tmpl.initNew       = (e&&e.parameter&&e.parameter.nw) ? '1' : '0';
   tmpl.initNamaJson  = JSON.stringify((e&&e.parameter&&e.parameter.nm) ? String(e.parameter.nm) : '');
   tmpl.initShiftJson = JSON.stringify((e&&e.parameter&&e.parameter.sh) ? String(e.parameter.sh) : '');
+  tmpl.initTglJson   = JSON.stringify((e&&e.parameter&&e.parameter.tg) ? String(e.parameter.tg) : '');
   return tmpl.evaluate()
     .setTitle("Laporan Dinas Goretty")
     .addMetaTag("viewport","width=device-width,initial-scale=1")
@@ -61,6 +62,17 @@ function include(filename) {
 // ═══════════════════════════════════════════════════════
 //  PAGE 1 — DAFTAR PASIEN HARI INI
 // ═══════════════════════════════════════════════════════
+// Tanggal operasional Page1: hari berganti pada pukul 07:00 (zona waktu skrip).
+// Sebelum jam 7 → masih dihitung HARI SEBELUMNYA, sehingga badge nomor laporan
+// tetap tampil sampai jam 7 pagi. Mulai 07:00 → pindah ke tanggal kalender hari ini.
+function tanggalOperasional_(tz) {
+  var now = new Date();
+  var jam = parseInt(Utilities.formatDate(now, tz, 'H'), 10);
+  var ms  = now.getTime();
+  if(jam < 7) ms -= 24 * 60 * 60 * 1000;
+  return Utilities.formatDate(new Date(ms), tz, 'yyyy-MM-dd');
+}
+
 function getDataPage1() {
   var cache = CacheService.getScriptCache();
   var cached = cache.get('p1_data');
@@ -119,7 +131,7 @@ function getDataPage1() {
       if(iTglRSSC>=0 && c.idx===iTglRSSC) return false;
       return true;
     });
-    var hariIni = Utilities.formatDate(new Date(),tz,'yyyy-MM-dd');
+    var hariIni = tanggalOperasional_(tz); // hari berganti pukul 07:00
     var sudahAda = {};
     try {
       if(ws1 && ws1.getLastRow()>1){
