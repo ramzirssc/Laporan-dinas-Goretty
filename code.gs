@@ -515,10 +515,11 @@ function simpandisheet(ui) {
 //   Sore  → ambil Pagi  (hari sama)
 //   Malam → ambil Sore  (hari sama)
 //   Pagi  → ambil Malam (hari SEBELUMNYA)
-// Kembalikan JSON {diagnosis, alatmedik} (string; alatmedik dipisah ';').
-function getDiagnosisShiftSebelumnya(nama, tanggal, shift) {
+// _prevShiftData_ kembalikan {diagnosis, alatmedik, bed} dari 1 shift sebelumnya.
+function _prevShiftData_(nama, tanggal, shift) {
+  var kosong = {diagnosis:'', alatmedik:'', bed:''};
   var lr = ws1.getLastRow();
-  if(lr < 2) return JSON.stringify({diagnosis:'', alatmedik:''});
+  if(lr < 2) return kosong;
   var tz = Session.getScriptTimeZone();
   var sh = String(shift||'').toLowerCase().trim();
   var tgtTgl = String(tanggal||'').substring(0,10);
@@ -530,9 +531,9 @@ function getDiagnosisShiftSebelumnya(nama, tanggal, shift) {
     var d = new Date(tgtTgl); d.setDate(d.getDate() - 1);
     prevTgl = Utilities.formatDate(d, tz, 'yyyy-MM-dd');
   } else {
-    return JSON.stringify({diagnosis:'', alatmedik:''});
+    return kosong;
   }
-  var data = ws1.getRange(2, 1, lr - 1, 9).getValues(); // A..I
+  var data = ws1.getRange(2, 1, lr - 1, 17).getValues(); // A..Q (Q=Bed idx16)
   var namaLc = String(nama||'').toLowerCase().trim();
   var found = null;
   for(var i = 0; i < data.length; i++) {
@@ -546,8 +547,44 @@ function getDiagnosisShiftSebelumnya(nama, tanggal, shift) {
     if(String(r[2]||'').toLowerCase().trim() !== prevShift) continue;
     found = r; // ambil kemunculan terakhir di sheet
   }
-  if(!found) return JSON.stringify({diagnosis:'', alatmedik:''});
-  return JSON.stringify({diagnosis:String(found[6]||''), alatmedik:String(found[8]||'')});
+  if(!found) return kosong;
+  return {diagnosis:String(found[6]||''), alatmedik:String(found[8]||''), bed:String(found[16]||'')};
+}
+
+function getDiagnosisShiftSebelumnya(nama, tanggal, shift) {
+  var p = _prevShiftData_(nama, tanggal, shift);
+  return JSON.stringify({diagnosis:p.diagnosis, alatmedik:p.alatmedik});
+}
+
+// SATU panggilan server untuk Page5: daftar nama + data pasien + data shift
+// sebelumnya (diagnosis/alat/bed) + laporan existing (cek duplikat).
+// Tujuan: hindari beberapa server call beruntun (nama → data → cek duplikat).
+function getPaketLaporan(nama, tanggal, shift) {
+  var tz = Session.getScriptTimeZone();
+  var today = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+  var out = { namaList:[], dataPasien:null, sebelumnya:{diagnosis:'',alatmedik:'',bed:''}, existing:null };
+
+  // 1) daftar nama: hari ini → ws2; tanggal lain → pasien dgn laporan tgl tsb
+  if(!tanggal || tanggal === today) out.namaList = JSON.parse(getPasienHariIniNames());
+  else                              out.namaList = JSON.parse(getNamaPasienDalamRentang(tanggal, tanggal));
+
+  if(!nama) return JSON.stringify(out);
+
+  // 2) data pasien dari ws2
+  var rows = ws2.getRange(2,1,Math.max(ws2.getLastRow()-1,1),16).getValues();
+  var b = rows.find(function(r){return r[1]==nama;});
+  out.dataPasien = b || null;
+
+  // 3) laporan existing (nama+tanggal+shift)
+  var dup = cekDuplikatLaporan(nama, tanggal, shift);
+  if(dup.count > 0) {
+    var baris = _cariRowByNomor_(dup.nomor);
+    if(baris > 0) out.existing = ws1.getRange(baris,1,1,17).getValues()[0];
+  }
+
+  // 4) data shift sebelumnya (diagnosis/alat/bed)
+  out.sebelumnya = _prevShiftData_(nama, tanggal, shift);
+  return JSON.stringify(out);
 }
 
 // ═══════════════════════════════════════════════════════
