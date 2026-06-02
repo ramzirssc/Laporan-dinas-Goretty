@@ -1,0 +1,226 @@
+<!-- PAGE 9: LOGBOOK PERAWAT GORETTY -->
+<style>
+  .p9-bar{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;
+    background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--radius-lg);
+    padding:12px 18px;margin-bottom:12px;box-shadow:var(--shadow)}
+  .p9-bar .p9-ttl{font-family:var(--serif);font-size:17px;font-weight:600;font-style:italic;
+    color:var(--blue-dk);align-self:center;margin-right:6px}
+  .p9-f{display:flex;flex-direction:column;gap:3px}
+  .p9-f label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+  .p9-f select{height:36px;min-height:44px;padding:0 8px;font-size:12.5px;
+    border:1px solid var(--border);border-radius:var(--radius-sm);
+    background:var(--field-active-bg);color:var(--field-active-text);
+    -webkit-appearance:none;appearance:none}
+  .p9-f select:focus{outline:none;border-color:var(--blue-focus);box-shadow:0 0 0 3px var(--blue-lt)}
+  .p9-info{font-size:11px;color:var(--muted);font-style:italic;margin-left:auto;align-self:center}
+  .p9-status{font-size:12px;color:var(--muted);font-style:italic;
+    padding:5px 14px;background:var(--surface2);border:1px solid var(--border-soft);
+    border-radius:var(--radius-sm);margin-bottom:12px}
+
+  .p9-sum{display:flex;flex-wrap:wrap;gap:10px}
+  .p9-sum-item{flex:1;min-width:120px;background:var(--surface2);border:1px solid var(--border-soft);
+    border-radius:var(--radius);padding:9px 12px}
+  .p9-sum-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  .p9-sum-val{font-size:17px;font-weight:700;color:var(--blue-dk);margin-top:2px}
+
+  .p9-tbl{width:100%;border-collapse:collapse;font-size:12px}
+  .p9-tbl thead th{background:#1e3f62;color:#fff;padding:8px 10px;font-size:10.5px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.03em;text-align:right;white-space:nowrap;
+    border-right:1px solid rgba(255,255,255,.1)}
+  .p9-tbl thead th:first-child{text-align:left}
+  .p9-tbl tbody td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--border-soft);
+    border-right:1px solid var(--border-soft);white-space:nowrap}
+  .p9-tbl tbody td:first-child{text-align:left}
+  .p9-tbl tbody tr:nth-child(even){background:var(--surface2)}
+
+  .p9-scroll{overflow-x:auto}
+  .p9-wide thead th{position:sticky;top:0;z-index:5}
+  .p9-wide td.p9-sticky,.p9-wide th.p9-sticky{position:sticky;background:var(--surface);z-index:6}
+  .p9-wide thead th.p9-sticky{background:#1e3f62;z-index:8}
+  .p9-wide .p9-s1{left:0;min-width:70px;text-align:left}
+  .p9-wide .p9-s2{left:70px;min-width:190px;text-align:left;box-shadow:2px 0 5px rgba(30,60,120,.12)}
+  .p9-wide tbody tr:nth-child(even) td.p9-sticky{background:var(--surface2)}
+  .p9-avg td{font-weight:700;background:#dce8f4 !important;color:var(--blue-dk);
+    border-top:2px solid var(--blue-mid)}
+  .p9-avg td.p9-sticky{background:#dce8f4 !important}
+
+  .p9-nodata{text-align:center;padding:40px;color:var(--muted);font-style:italic}
+  @media(max-width:767px){
+    .p9-bar{padding:10px 14px}.p9-bar .p9-ttl{font-size:15px}
+    .p9-info{margin-left:0;width:100%}
+  }
+</style>
+
+<div class="p9-bar">
+  <span class="p9-ttl">📒 Logbook Perawat Goretty</span>
+  <div class="p9-f"><label>Perawat</label><select id="p9-perawat"></select></div>
+  <div class="p9-f"><label>Bulan</label><select id="p9-bulan"></select></div>
+  <div class="p9-f"><label>Tahun</label><select id="p9-tahun"></select></div>
+  <span class="p9-info" id="p9-genat"></span>
+</div>
+<div class="p9-status" id="p9-status">Memuat…</div>
+<div id="p9-content"></div>
+
+<script>
+var P9_DOMAINS = ["Oksigen","Obat","Cairan","TTV","Dokumen","Kebutuhan","Asuhan","Alat"];
+var P9_BULAN   = ['Januari','Februari','Maret','April','Mei','Juni',
+                  'Juli','Agustus','September','Oktober','November','Desember'];
+var P9_FACTOR  = 100; // jika rekap ternyata desimal mentah, ubah ke 1
+var p9Cache    = {};  // tahun -> AggTahun (cache klien in-memory)
+var p9Perawat  = [];
+var p9Ready    = false;
+
+function initP9(){
+  if(p9Ready) return;
+  loading(true);
+  google.script.run
+    .withSuccessHandler(function(rawP){
+      try{p9Perawat=JSON.parse(rawP);}catch(e){p9Perawat=[];}
+      google.script.run
+        .withSuccessHandler(function(rawT){
+          loading(false);
+          var years=[]; try{years=JSON.parse(rawT);}catch(e){}
+          p9Ready=true;
+          p9Setup(years);
+        })
+        .withFailureHandler(function(e){loading(false);errH(e);})
+        .getTahunTersediaGoretty();
+    })
+    .withFailureHandler(function(e){loading(false);errH(e);})
+    .getDaftarPerawatGoretty();
+}
+
+function p9Setup(years){
+  var now=new Date(), curY=now.getFullYear(), curM=now.getMonth()+1;
+  if(years.indexOf(curY)<0) years.unshift(curY);
+
+  var selY=document.getElementById('p9-tahun'); selY.innerHTML='';
+  years.forEach(function(y){var o=document.createElement('option');o.value=y;o.textContent=y;selY.appendChild(o);});
+  selY.value=curY;
+
+  var selP=document.getElementById('p9-perawat');
+  selP.innerHTML='<option value="">Semua perawat</option>';
+  p9Perawat.forEach(function(p){
+    var o=document.createElement('option');o.value=p.npk;o.textContent=p.nama+' ('+p.pk+')';selP.appendChild(o);
+  });
+  selP.value='';
+
+  var selB=document.getElementById('p9-bulan'); selB.innerHTML='';
+  P9_BULAN.forEach(function(nm,i){var o=document.createElement('option');o.value=i+1;o.textContent=nm;selB.appendChild(o);});
+  selB.value=curM;
+
+  selY.onchange=function(){p9LoadTahun(parseInt(selY.value,10));};
+  selP.onchange=p9Render;
+  selB.onchange=p9Render;
+
+  p9LoadTahun(curY);
+}
+
+function p9LoadTahun(tahun, force){
+  if(!force && p9Cache[tahun]){ p9Render(); return; }
+  document.getElementById('p9-status').textContent='Memuat data '+tahun+'…';
+  loading(true);
+  google.script.run
+    .withSuccessHandler(function(raw){
+      loading(false);
+      try{p9Cache[tahun]=JSON.parse(raw);}
+      catch(e){document.getElementById('p9-status').textContent='⚠ Error membaca data.';return;}
+      p9Render();
+    })
+    .withFailureHandler(function(e){
+      loading(false);
+      document.getElementById('p9-status').textContent='⚠ Gagal: '+(e&&e.message?e.message:String(e));
+    })
+    .getAgregatTahunGoretty(tahun, !!force);
+}
+
+function p9Render(){
+  var tahun=parseInt(document.getElementById('p9-tahun').value,10);
+  var bulan=parseInt(document.getElementById('p9-bulan').value,10);
+  var npk  =document.getElementById('p9-perawat').value;
+  var agg  =p9Cache[tahun];
+  var cont =document.getElementById('p9-content');
+  if(!agg){cont.innerHTML='';return;}
+  document.getElementById('p9-genat').textContent='Data per '+p9fmtGenAt(agg.generatedAt);
+
+  var rows=(agg.rows||[]).filter(function(r){return r.bulan===bulan;});
+  if(npk) rows=rows.filter(function(r){return r.npk===npk;});
+
+  document.getElementById('p9-status').textContent=
+    'Tahun '+tahun+' · '+P9_BULAN[bulan-1]+(npk?' · 1 perawat':' · Semua perawat ('+rows.length+')');
+
+  if(!rows.length){ cont.innerHTML='<div class="p9-nodata">Tidak ada data untuk periode ini</div>'; return; }
+  cont.innerHTML = npk ? p9RenderOne(rows[0]) : p9RenderAll(rows);
+}
+
+function p9RenderOne(r){
+  var h='<div class="card"><div class="card-title">'+esc(r.nama)+'</div><div class="p9-sum">';
+  h+=p9sum('NPK',esc(r.npk))+p9sum('PK',esc(r.pk))+p9sum('Target',esc(String(r.target)))
+    +p9sum('Jumlah Tindakan',p9int(r.jumlahTindakan))
+    +p9sum('Total Nilai',p9pct(r.totalNilai))
+    +p9sum('Nilai sesuai PK',p9pct(r.nilaiSesuaiPK));
+  h+='</div></div>';
+
+  h+='<div class="card"><div class="card-title">Rincian Tindakan per Domain</div>'
+    +'<div class="p9-scroll"><table class="p9-tbl"><thead><tr>';
+  P9_DOMAINS.forEach(function(d){h+='<th>'+esc(d)+'</th>';});
+  h+='<th>Jumlah</th></tr></thead><tbody><tr>';
+  P9_DOMAINS.forEach(function(d){h+='<td>'+p9int(r.domain[d])+'</td>';});
+  h+='<td><strong>'+p9int(r.jumlahTindakan)+'</strong></td></tr></tbody></table></div></div>';
+
+  h+='<div class="card"><div class="card-title">Jumlah Nilai per PK</div>'
+    +'<div class="p9-scroll"><table class="p9-tbl"><thead><tr>';
+  for(var i=1;i<=5;i++) h+='<th>PK '+i+'</th>';
+  h+='<th>Total</th></tr></thead><tbody><tr>';
+  for(var j=0;j<5;j++) h+='<td>'+p9pct(r.nilaiPK[j])+'</td>';
+  h+='<td><strong>'+p9pct(r.totalNilai)+'</strong></td></tr></tbody></table></div></div>';
+  return h;
+}
+
+function p9RenderAll(rows){
+  var h='<div class="card" style="padding:0;overflow:hidden"><div class="p9-scroll">'
+    +'<table class="p9-tbl p9-wide"><thead><tr>'
+    +'<th class="p9-sticky p9-s1">NPK</th><th class="p9-sticky p9-s2">Nama</th>'
+    +'<th>PK</th><th>Target</th><th>Jml Tindakan</th><th>Total %</th><th>Sesuai PK %</th>';
+  P9_DOMAINS.forEach(function(d){h+='<th>'+esc(d)+'</th>';});
+  for(var i=1;i<=5;i++) h+='<th>PK '+i+' %</th>';
+  h+='</tr></thead><tbody>';
+
+  var sum={jt:0,total:0,sesuai:0,dom:{},pk:[0,0,0,0,0]};
+  P9_DOMAINS.forEach(function(d){sum.dom[d]=0;});
+
+  rows.forEach(function(r){
+    h+='<tr><td class="p9-sticky p9-s1">'+esc(r.npk)+'</td><td class="p9-sticky p9-s2">'+esc(r.nama)+'</td>'
+      +'<td>'+esc(r.pk)+'</td><td>'+esc(String(r.target))+'</td>'
+      +'<td>'+p9int(r.jumlahTindakan)+'</td>'
+      +'<td>'+p9pct(r.totalNilai)+'</td><td>'+p9pct(r.nilaiSesuaiPK)+'</td>';
+    P9_DOMAINS.forEach(function(d){h+='<td>'+p9int(r.domain[d])+'</td>';});
+    for(var j=0;j<5;j++) h+='<td>'+p9pct(r.nilaiPK[j])+'</td>';
+    h+='</tr>';
+    sum.jt+=Number(r.jumlahTindakan||0); sum.total+=Number(r.totalNilai||0); sum.sesuai+=Number(r.nilaiSesuaiPK||0);
+    P9_DOMAINS.forEach(function(d){sum.dom[d]+=Number(r.domain[d]||0);});
+    for(var k=0;k<5;k++) sum.pk[k]+=Number(r.nilaiPK[k]||0);
+  });
+
+  var n=rows.length;
+  h+='<tr class="p9-avg"><td class="p9-sticky p9-s1"></td><td class="p9-sticky p9-s2">RATA-RATA</td>'
+    +'<td></td><td></td><td>'+p9int(sum.jt/n)+'</td>'
+    +'<td>'+p9pct(sum.total/n)+'</td><td>'+p9pct(sum.sesuai/n)+'</td>';
+  P9_DOMAINS.forEach(function(d){h+='<td>'+p9int(sum.dom[d]/n)+'</td>';});
+  for(var m=0;m<5;m++) h+='<td>'+p9pct(sum.pk[m]/n)+'</td>';
+  h+='</tr></tbody></table></div></div>';
+  return h;
+}
+
+function p9sum(lbl,val){
+  return '<div class="p9-sum-item"><div class="p9-sum-lbl">'+lbl+'</div><div class="p9-sum-val">'+val+'</div></div>';
+}
+function p9pct(v){ return (Number(v||0)*P9_FACTOR).toFixed(2).replace('.',',')+'%'; }
+function p9int(v){ return String(Math.round(Number(v||0))); }
+function p9fmtGenAt(iso){
+  if(!iso) return '';
+  var d=new Date(iso); if(isNaN(d.getTime())) return iso;
+  return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear()
+    +' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
+}
+</script>
