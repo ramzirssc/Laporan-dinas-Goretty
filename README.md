@@ -318,13 +318,21 @@ Target hardcode: `{ I:80, II:80, III:75, IV:80, V:43 }`. PK number: `{ I:1..V:5 
 
 ## 11. Halaman Lain (ringkas)
 
-- **Page1** — daftar pasien hari ini (`getDataPage1`, cache `p1_data` 60 detik). `sudahAda` memetakan `(nama|shift)`→nomor. Klik shift kosong → `tulisLaporan()` membuka **tab baru** ke `?p=5&nw=1&nm=&sh=` (fallback `gotoPage` mode baru). `invalidateP1Cache()` untuk Refresh.
+- **Page1** — daftar pasien hari ini (`getDataPage1`, cache `p1_data` 60 detik). `sudahAda` memetakan `(nama|shift)`→nomor laporan untuk **hari operasional** (lihat di bawah). Klik shift kosong → `tulisLaporan()` membuka **tab baru** ke `?p=5&nw=1&nm=&sh=&tg=` (fallback `gotoPage` mode baru). `invalidateP1Cache()` untuk Refresh.
 - **Page3** — `getLaporan(filter)` (default 3 hari terakhir); `getNamaPasienDalamRentang(tm,ta)`; edit inline via `updateLaporan` (§8); Refresh & Cetak PDF.
 - **Page4** — `getDataPage4`, `getAllLaporanPasien`, `cariSemuaNamaPasien`; tombol Refresh muat ulang tampilan aktif.
 - **Page7** — `getDaftarDinas(tm,ta)` dari spreadsheet eksternal; filter unit kolom I mengandung "G".
 
+### Hari operasional Page1 (pergantian pukul 07:00)
+
+`tanggalOperasional_(tz)`: badge nomor laporan di Page1 mengacu pada **hari operasional**, bukan tanggal kalender. Hari berganti **pukul 07:00** (zona waktu skrip): sebelum jam 7 → masih dihitung **hari sebelumnya**; mulai 07:00 → tanggal hari ini.
+- Contoh: 3 Juni 02:00 → badge masih milik 2 Juni (laporan kemarin tetap tampil, mis. `#10000 pagi`). 3 Juni 07:00 → badge kosong (siap laporan baru).
+- Tanggal operasional ini diteruskan ke Page5 (param URL `tg`) saat membuat laporan baru, dan dipakai untuk label tanggal Page1, agar konsisten dengan cek-duplikat & shift-sebelumnya.
+- Implementasi: `getDataPage1()` memakai `tanggalOperasional_(tz)` sebagai `hariIni`; `page1.html` meneruskan `&tg=` ke tab baru dan menampilkan label dari `obj.hariIni`.
+- Halaman lain (Page5 standalone, Page3/4) tetap memakai tanggal kalender. Jam topbar = jam dinding asli (sengaja tidak diubah).
+
 ### Param URL `doGet`
-`p` (halaman), `n` (nomor untuk lihat laporan), `nw=1`+`nm`+`sh` (buka Page5 mode laporan baru, nama/shift diteruskan; nama disuntik aman via `initNamaJson`).
+`p` (halaman), `n` (nomor untuk lihat laporan), `nw=1`+`nm`+`sh`+`tg` (buka Page5 mode laporan baru: nama/shift/tanggal-operasional diteruskan). String pengguna disuntik ke JS secara aman lewat JSON (`initNamaJson`, `initShiftJson`, `initTglJson`).
 
 ---
 
