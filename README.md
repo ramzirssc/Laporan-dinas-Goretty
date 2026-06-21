@@ -249,6 +249,21 @@ Page8 menghitung **diagnosis & alat medik langsung dari ws1 (Laporan)**, dan met
 
 > **Page8 TIDAK bergantung pada sheet Pivot.** Tanpa arsip, perhitungan langsung dari ws1 = lebih andal & presisi tanggal.
 
+### Pivot Indikator Bulanan — `getPivotBulananPage8(tahun)`
+
+Frame di bawah pita filter tahun: **satu pivot tabel** yang merangkum semua indikator dalam satu tampilan.
+
+- **1 server call per tahun** (cache `pivot8_<tahun>` ±10 menit). Hanya bergantung pada **tahun** (bukan filter rentang tanggal di bawahnya).
+- **Baris** = penjabaran indikator, dikelompokkan per **seksi berbadge**:
+  Pasien Baru · Diagnosis Terbanyak · Alat Medik Terbanyak · DPJP · Jaminan · Cara Keluar · Distribusi Umur · Distribusi Length of Stay (ICU).
+- **Kolom** = bulan dalam tahun terpilih (Jan…bulan berjalan untuk tahun ini; Jan–Des untuk tahun lampau). Kolom paling kanan = **Total**.
+- **Tiap sel** = `jumlah (persen%)`. **Penyebut persentase = jumlah pasien baru bulan itu** (`pasienBulan[mo]`); kolom Total memakai total pasien setahun. Seksi *Pasien Baru* tampil angka saja (dialah penyebutnya).
+- **Sumber data**: diagnosis & alat dari `ws1` (1 pasien 1 hitungan = kemunculan paling awal, sama seperti `getStatistikPage8`); pasien baru, jaminan, DPJP, cara keluar (kolom T `Merge`, idx 19), umur, dan LOS dari sheet **Merge**.
+- **Bucket umur** (neonatal–anak): `<28 hari`, `28 hari–<1 th`, `1–<5 th`, `5–<12 th`, `12–<18 th`, `≥18 th` (umur dihitung dari `tgl lahir`→`tgl masuk`).
+- **Bucket LOS**: `1–3`, `4–7`, `8–14`, `>14 hari` (dari lama rawat, kolom P `Merge`, idx 15).
+- Diagnosis/DPJP/Alat dibatasi 15 baris teratas (urut total menurun); bucket Umur/LOS memakai urutan tetap.
+- Frontend (prefiks `p8`): `getPivotBulananPage8` dipanggil di `initP8` & saat ganti tahun (`p8OnYearChange`). Header & kolom "Indikator" sticky.
+
 ### Fungsi Pivot (opsional, tidak dipakai Page8)
 Masih tersedia di `code.gs` bila ingin sheet Pivot bulanan: `refreshPivot()`, `pulihkanPivot()`, `_tulisSheet_()`, `getPivotStatistik()`, `pasangTriggerMalam()`. Membaca **hanya ws1** (tanpa arsip), menghitung dari baris ber-kolom-R. Konstanta `DIAGNOSIS_LIST` & `ALAT_LIST` dipakai bersama Page8.
 

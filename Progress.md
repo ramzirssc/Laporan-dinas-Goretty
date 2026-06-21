@@ -71,6 +71,15 @@ README diselaraskan dengan implementasi: tanpa arsip, Page5 berbasis pencarian, 
 - README §11: dokumentasi hari operasional 07:00 + param `doGet` `tg` + injeksi string aman via JSON.
 - **`CLAUDE.md` baru**: panduan kerja (bentuk proyek Apps Script, cara cek sintaks, invariant wajib, konvensi, jejak bug, alur git) — pelengkap README agar repo bisa dibangun ulang.
 
+## 10. Page8: Pivot Indikator Bulanan
+
+- Backend baru `getPivotBulananPage8(tahun)` (**1 call/tahun**, cache `pivot8_<tahun>` ±10 menit): merangkum 8 indikator per bulan dalam tahun terpilih.
+- Frame baru di Page8 di bawah pita filter tahun: **satu pivot tabel** — baris = penjabaran indikator (seksi berbadge: Pasien Baru, Diagnosis, Alat Medik, DPJP, Jaminan, Cara Keluar, Distribusi Umur, Distribusi LOS); kolom = bulan (Jan…bulan berjalan / Jan–Des untuk tahun lampau) + kolom Total kanan.
+- Tiap sel `jumlah (persen%)`; **penyebut % = jumlah pasien baru bulan itu**, Total memakai total setahun.
+- Sumber: diagnosis & alat dari `ws1` (1 pasien 1 hitungan); pasien baru/jaminan/DPJP/cara keluar/umur/LOS dari `Merge`.
+- Keputusan user: bucket umur neonatal–anak (`<28 hari … ≥18 th`), bucket LOS (`1–3/4–7/8–14/>14 hari`), penyebut % = pasien baru bulan itu.
+- Catatan repo: `Code.js` (duplikat `code.gs`) dihapus agar `clasp push` tak bentrok; `code.gs` = sumber tunggal.
+
 ---
 
 ## Ringkasan keputusan penting (sticky)
@@ -78,7 +87,7 @@ README diselaraskan dengan implementasi: tanpa arsip, Page5 berbasis pencarian, 
 - **Tanpa arsip** — semua data di `ws1`.
 - **Nomor laporan** = `baristerakhir()` (max kolom A) + LockService + cek duplikat server.
 - **Page5** = pencarian tanggal+nama+shift, `getPaketLaporan` (1 call/aksi), identitas terkunci saat baru, bed/diagnosis/alat ikut shift sebelumnya.
-- **Page8** = diagnosis/alat langsung dari `ws1` (date-precise), metrik pasien dari `Merge`; sheet Pivot opsional.
+- **Page8** = diagnosis/alat langsung dari `ws1` (date-precise), metrik pasien dari `Merge`; sheet Pivot opsional. **Pivot indikator bulanan** via `getPivotBulananPage8` (1 call/tahun).
 - **Page9** = logbook perawat, read-only dari spreadsheet eksternal.
 - **Hari operasional Page1** berganti pukul **07:00**.
 - **Spreadsheet eksternal (Page7, Page9) READ-ONLY.**

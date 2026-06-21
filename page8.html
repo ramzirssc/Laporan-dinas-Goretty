@@ -101,6 +101,31 @@
     background:rgba(255,255,255,.75);font-size:12px;color:var(--muted);
     border-radius:var(--radius-lg)}
 
+  /* ── Pivot indikator bulanan ── */
+  .p8-pivot-scroll{overflow:auto;max-height:600px;
+    border:1px solid var(--border-soft);border-radius:var(--radius-sm)}
+  .p8-pivot-tbl{border-collapse:separate;border-spacing:0;width:100%;
+    font-size:12px;white-space:nowrap}
+  .p8-pv-head{position:sticky;top:0;z-index:2;background:var(--surface2);
+    font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+    color:var(--muted);padding:7px 10px;border-bottom:1px solid var(--border)}
+  .p8-pivot-tbl td{padding:6px 10px;border-bottom:0.5px solid var(--border-soft)}
+  .p8-pv-num{text-align:right}
+  .p8-pv-sticky{position:sticky;left:0;z-index:1;background:var(--surface);
+    text-align:left;box-shadow:1px 0 0 var(--border-soft)}
+  .p8-pv-head.p8-pv-sticky{z-index:3}
+  .p8-pv-lbl{font-size:11.5px;color:var(--text);max-width:220px;
+    overflow:hidden;text-overflow:ellipsis}
+  .p8-pv-secrow td{background:var(--surface2)!important;padding:5px 10px}
+  .p8-pv-badge{display:inline-block;font-size:10.5px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.05em;color:#fff;background:#3a6ea8;
+    padding:2px 9px;border-radius:10px}
+  .p8-pv-n{font-weight:600;color:var(--text)}
+  .p8-pv-pct{font-size:10.5px;color:var(--muted)}
+  .p8-pv-zero{color:var(--border)}
+  .p8-pv-total{font-weight:700;color:var(--blue-dk);background:var(--surface2)}
+  .p8-pv-empty{color:var(--muted);font-style:italic;font-size:11px;padding:6px 10px}
+
   /* ── Responsive ── */
   @media(max-width:1023px){
     .p8-charts-row{grid-template-columns:1fr}
@@ -127,6 +152,17 @@
 
   <!-- Status -->
   <div class="p8-status" id="p8-status">Memuat data statistik…</div>
+
+  <!-- Pivot indikator bulanan (berdasarkan tahun) -->
+  <div class="p8-card" style="margin-bottom:12px">
+    <div class="p8-card-hdr">
+      <span class="p8-card-title">Pivot Indikator Bulanan</span>
+      <span class="p8-card-sub" id="p8-pivot-sub"></span>
+    </div>
+    <div class="p8-card-body">
+      <div id="p8-pivot-content"><div class="p8-nodata">Memuat…</div></div>
+    </div>
+  </div>
 
   <!-- Row atas: time series + jaminan (berdasarkan tahun) -->
   <div class="p8-charts-row">
@@ -290,6 +326,7 @@ function initP8() {
   p8SetRange(curYear);
   // Load data
   p8Load();
+  p8LoadPivot();
 }
 
 function p8SetRange(tahun) {
@@ -311,6 +348,7 @@ function p8OnYearChange() {
   var tahun = parseInt(document.getElementById('p8-tahun').value);
   p8SetRange(tahun);
   p8Load();
+  p8LoadPivot();
 }
 
 function p8ApplyRange() {
@@ -669,6 +707,86 @@ function p8MetRow(lbl, val) {
     + '<span class="p8-metric-lbl">' + lbl + '</span>'
     + '<span class="p8-metric-val">' + val + '</span>'
     + '</div>';
+}
+
+// ── Pivot indikator bulanan ──────────────────────────
+function p8LoadPivot() {
+  var tahun = parseInt(document.getElementById('p8-tahun').value);
+  var el = document.getElementById('p8-pivot-content');
+  el.innerHTML = '<div class="p8-nodata">Memuat…</div>';
+  document.getElementById('p8-pivot-sub').textContent = '';
+  google.script.run
+    .withSuccessHandler(function(raw) {
+      try {
+        var obj = JSON.parse(raw);
+        if(obj.error) { el.innerHTML = '<div class="p8-nodata">⚠ ' + esc(obj.error) + '</div>'; return; }
+        p8RenderPivot(obj);
+      } catch(e) {
+        el.innerHTML = '<div class="p8-nodata">⚠ Error: ' + esc(String(e)) + '</div>';
+      }
+    })
+    .withFailureHandler(function(e) {
+      el.innerHTML = '<div class="p8-nodata">⚠ Gagal: '
+        + esc(e && e.message ? e.message : String(e)) + '</div>';
+    })
+    .getPivotBulananPage8(tahun);
+}
+
+function p8RenderPivot(d) {
+  var monthNames = ['Jan','Feb','Mar','Apr','Mei','Jun',
+                    'Jul','Agu','Sep','Okt','Nov','Des'];
+  var curYear  = new Date().getFullYear();
+  var curMonth = new Date().getMonth(); // 0-based
+  var nMonths  = (d.tahun === curYear) ? (curMonth + 1) : 12;
+  var pasienBulan = d.pasienBulan || [];
+  var pasienTotal = d.pasienTotal || 0;
+
+  var el = document.getElementById('p8-pivot-content');
+  document.getElementById('p8-pivot-sub').textContent =
+    'Tahun ' + d.tahun + ' · ' + pasienTotal + ' pasien';
+
+  if(!d.seksi || !d.seksi.length || !pasienTotal) {
+    el.innerHTML = '<div class="p8-nodata">Tidak ada data pada tahun ini</div>'; return;
+  }
+
+  var nCol = nMonths + 2; // label + bulan + total
+  var html = '<div class="p8-pivot-scroll"><table class="p8-pivot-tbl"><thead><tr>'
+    + '<th class="p8-pv-head p8-pv-sticky">Indikator</th>';
+  for(var m = 0; m < nMonths; m++) {
+    html += '<th class="p8-pv-head p8-pv-num">' + monthNames[m] + '</th>';
+  }
+  html += '<th class="p8-pv-head p8-pv-num p8-pv-total">Total</th></tr></thead><tbody>';
+
+  d.seksi.forEach(function(sec) {
+    html += '<tr class="p8-pv-secrow"><td class="p8-pv-sticky" colspan="' + nCol + '">'
+      + '<span class="p8-pv-badge">' + esc(sec.judul) + '</span></td></tr>';
+    if(!sec.rows || !sec.rows.length) {
+      html += '<tr><td class="p8-pv-sticky p8-pv-empty" colspan="' + nCol
+        + '">— tidak ada data —</td></tr>';
+      return;
+    }
+    var pakaiPersen = (sec.persen !== false);
+    sec.rows.forEach(function(row) {
+      html += '<tr><td class="p8-pv-sticky p8-pv-lbl" title="' + esc(row.nama) + '">'
+        + esc(row.nama) + '</td>';
+      for(var m = 0; m < nMonths; m++) {
+        var c = (row.bulan && row.bulan[m]) || 0;
+        html += '<td class="p8-pv-num">' + p8PivCell(c, pasienBulan[m] || 0, pakaiPersen) + '</td>';
+      }
+      html += '<td class="p8-pv-num p8-pv-total">'
+        + p8PivCell(row.total || 0, pasienTotal, pakaiPersen) + '</td></tr>';
+    });
+  });
+  html += '</tbody></table></div>';
+  el.innerHTML = html;
+}
+
+function p8PivCell(count, den, pakaiPersen) {
+  if(!count) return '<span class="p8-pv-zero">–</span>';
+  if(!pakaiPersen) return '<span class="p8-pv-n">' + count + '</span>';
+  var pct = den > 0 ? Math.round(count / den * 1000) / 10 : 0;
+  return '<span class="p8-pv-n">' + count + '</span> '
+    + '<span class="p8-pv-pct">(' + pct + '%)</span>';
 }
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }

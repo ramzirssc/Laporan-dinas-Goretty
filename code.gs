@@ -829,6 +829,149 @@ function getStatistikPage8(tahun, tglMulai, tglAkhir) {
 }
 
 // ═══════════════════════════════════════════════════════
+//  PAGE 8 — PIVOT INDIKATOR BULANAN (1 call / tahun)
+//  Baris = penjabaran indikator; kolom = bulan dalam tahun.
+//  Penyebut % per sel = jumlah pasien baru bulan itu (pasienBulan[mo]).
+//  Sumber: Merge (pasien baru, jaminan, DPJP, cara keluar, umur, LOS);
+//          ws1 (diagnosis & alat, 1 pasien 1 hitungan = kemunculan paling awal).
+// ═══════════════════════════════════════════════════════
+function getPivotBulananPage8(tahun) {
+  var cacheKey = 'pivot8_' + tahun;
+  var cache = CacheService.getScriptCache();
+  var hit = cache.get(cacheKey);
+  if(hit) return hit;
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ws = ss.getSheetByName('Merge');
+  if(!ws) return JSON.stringify({error:'Sheet "Merge" tidak ditemukan'});
+  var lastRow = ws.getLastRow();
+  if(lastRow < 2) return JSON.stringify({error:'Data Merge kosong'});
+
+  var tz = Session.getScriptTimeZone();
+  var tahunStr = String(tahun);
+  var data = ws.getRange(2, 1, lastRow - 1, 20).getValues();
+
+  function toYMD(v){
+    if(!v) return '';
+    if(v instanceof Date){ try{return Utilities.formatDate(v,tz,'yyyy-MM-dd');}catch(e){return'';} }
+    return '';
+  }
+  function newRow(){ return [0,0,0,0,0,0,0,0,0,0,0,0]; }
+  function bump(map,key,mo){ if(!map[key]) map[key]=newRow(); map[key][mo]++; }
+  function sum(arr){ var s=0; for(var i=0;i<arr.length;i++) s+=arr[i]; return s; }
+
+  // ── Bucket umur (neonatal–anak) & LOS ──
+  var UMUR_LABELS = ['<28 hari','28 hari–<1 th','1–<5 th','5–<12 th','12–<18 th','≥18 th'];
+  function umurLabel(days){
+    if(days < 28) return UMUR_LABELS[0];
+    var yr = days/365.25;
+    if(yr < 1)  return UMUR_LABELS[1];
+    if(yr < 5)  return UMUR_LABELS[2];
+    if(yr < 12) return UMUR_LABELS[3];
+    if(yr < 18) return UMUR_LABELS[4];
+    return UMUR_LABELS[5];
+  }
+  var LOS_LABELS = ['1–3 hari','4–7 hari','8–14 hari','>14 hari'];
+  function losLabel(d){
+    if(d <= 3)  return LOS_LABELS[0];
+    if(d <= 7)  return LOS_LABELS[1];
+    if(d <= 14) return LOS_LABELS[2];
+    return LOS_LABELS[3];
+  }
+
+  var pasienBulan = newRow();
+  var jaminanMap = {}, dpjpMap = {}, caraMap = {}, umurMap = {}, losMap = {};
+
+  data.forEach(function(r){
+    var tglMasukR = r[10];
+    var ymd = toYMD(tglMasukR);
+    if(!ymd || ymd.substring(0,4) !== tahunStr) return;
+    var mo = parseInt(ymd.substring(5,7),10) - 1;
+    if(mo < 0 || mo > 11) return;
+    pasienBulan[mo]++;
+    var jam = String(r[8]||'').trim();  if(jam) bump(jaminanMap,jam,mo);
+    var dp  = String(r[12]||'').trim(); if(dp)  bump(dpjpMap,dp,mo);
+    var ck  = String(r[19]||'').trim(); if(ck)  bump(caraMap,ck,mo);
+    var tglLahir = r[4];
+    if(tglLahir instanceof Date && tglMasukR instanceof Date && tglMasukR > tglLahir){
+      var days = (tglMasukR - tglLahir)/86400000;
+      if(days >= 0 && days/365.25 < 130) bump(umurMap, umurLabel(days), mo);
+    }
+    var lama = r[15];
+    var lamaNum = (typeof lama==='number') ? lama : parseFloat(String(lama||''));
+    if(!isNaN(lamaNum) && lamaNum > 0) bump(losMap, losLabel(lamaNum), mo);
+  });
+
+  // ── Diagnosis & Alat dari ws1 (1 pasien 1 hitungan, kemunculan paling awal) ──
+  var diagMap = {}, alatMap = {};
+  (function(){
+    var lr = ws1.getLastRow();
+    if(lr < 2) return;
+    var raw = ws1.getRange(2,1,lr-1,17).getValues();
+    function toYMDflex(v){
+      if(!v) return '';
+      if(v instanceof Date){ try{return Utilities.formatDate(v,tz,'yyyy-MM-dd');}catch(e){return'';} }
+      var s = String(v);
+      if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0,10);
+      try{ var d=new Date(s); if(!isNaN(d.getTime())) return Utilities.formatDate(d,tz,'yyyy-MM-dd'); }catch(e){}
+      return '';
+    }
+    var firstByPasien = {};
+    raw.forEach(function(r){
+      if(!r[0]) return;
+      var nama = String(r[4]||'').toLowerCase().trim();
+      if(!nama) return;
+      var tgl = toYMDflex(r[1]);
+      if(!tgl) return;
+      var prev = firstByPasien[nama];
+      if(!prev || tgl < prev.tgl) firstByPasien[nama] = {tgl:tgl, diag:String(r[6]||''), alat:String(r[8]||'')};
+    });
+    Object.keys(firstByPasien).forEach(function(nm){
+      var o = firstByPasien[nm];
+      if(o.tgl.substring(0,4) !== tahunStr) return;
+      var mo = parseInt(o.tgl.substring(5,7),10) - 1;
+      if(mo < 0 || mo > 11) return;
+      var diagText = o.diag.toLowerCase().replace(/[^a-z0-9; ]/g,' ');
+      DIAGNOSIS_LIST.forEach(function(d){ if(diagText.indexOf(d) >= 0) bump(diagMap,d,mo); });
+      var alatArr = String(o.alat).split(/[;,]/).map(function(a){return a.trim().toLowerCase();});
+      ALAT_LIST.forEach(function(a){
+        var disp = (a.indexOf('|')>=0) ? a.split('|')[1] : a;
+        var aliases = a.toLowerCase().split('|');
+        for(var k=0;k<aliases.length;k++){ if(alatArr.indexOf(aliases[k]) >= 0){ bump(alatMap,disp,mo); break; } }
+      });
+    });
+  })();
+
+  // map → rows (urut total desc; atau fixedOrder untuk bucket; limit opsional)
+  function mapToRows(map, limit, fixedOrder){
+    var keys;
+    if(fixedOrder){ keys = fixedOrder.filter(function(k){ return map[k]; }); }
+    else { keys = Object.keys(map).sort(function(a,b){ return sum(map[b]) - sum(map[a]); }); }
+    var rows = keys.map(function(k){ return {nama:k, bulan:map[k], total:sum(map[k])}; });
+    if(limit && rows.length > limit) rows = rows.slice(0, limit);
+    return rows;
+  }
+
+  var pasienTotal = sum(pasienBulan);
+  var seksi = [
+    {judul:'Pasien Baru', persen:false, rows:[{nama:'Jumlah pasien baru', bulan:pasienBulan, total:pasienTotal}]},
+    {judul:'Diagnosis Terbanyak', persen:true, rows:mapToRows(diagMap,15)},
+    {judul:'Alat Medik Terbanyak', persen:true, rows:mapToRows(alatMap,15)},
+    {judul:'DPJP', persen:true, rows:mapToRows(dpjpMap,15)},
+    {judul:'Jaminan', persen:true, rows:mapToRows(jaminanMap)},
+    {judul:'Cara Keluar', persen:true, rows:mapToRows(caraMap)},
+    {judul:'Distribusi Umur', persen:true, rows:mapToRows(umurMap,0,UMUR_LABELS)},
+    {judul:'Distribusi Length of Stay (ICU)', persen:true, rows:mapToRows(losMap,0,LOS_LABELS)}
+  ];
+
+  var hasil = JSON.stringify({
+    tahun:tahun, pasienBulan:pasienBulan, pasienTotal:pasienTotal, seksi:seksi
+  });
+  try{cache.put(cacheKey,hasil,600);}catch(e){}
+  return hasil;
+}
+
+// ═══════════════════════════════════════════════════════
 //  REFRESH PIVOT (§8) — agregasi bulanan dari ws1.
 //  CATATAN: sistem ini TIDAK memakai arsip (data Goretty relatif kecil),
 //  jadi pivot dihitung 100% dari sheet Laporan (ws1).
