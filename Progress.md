@@ -80,6 +80,14 @@ README diselaraskan dengan implementasi: tanpa arsip, Page5 berbasis pencarian, 
 - Keputusan user: bucket umur neonatal–anak (`<28 hari … ≥18 th`), bucket LOS (`1–3/4–7/8–14/>14 hari`), penyebut % = pasien baru bulan itu.
 - Catatan repo: `Code.js` (duplikat `code.gs`) dihapus agar `clasp push` tak bentrok; `code.gs` = sumber tunggal.
 
+## 11. Page5: batas tanggal laporan baru ikut hari operasional (07:00)
+
+- **Default** input Tanggal Page5 = **tanggal operasional** (`tanggalOperasional_`, hari berganti pukul 07:00), bukan tanggal kalender browser.
+- **Batas atas**: laporan baru tak boleh bertanggal melebihi tanggal operasional. Contoh: 22 Juni pukul 06:00 → maksimal tanggal 21 Juni; setelah 07:00 → 22 Juni boleh.
+- Server (`doGet`) menyuntik tanggal operasional via `initOpsTglJson` → global `OPS_TGL`/`opsTgl()` (index.html). Page5 memasang atribut `max` (`p5ApplyMaxTgl`) dan memblokir mode baru + **warning** (toast) bila tanggal > operasional (`p5Open`).
+- Benteng server: `simpandisheet` menolak entri baru bertanggal melebihi operasional → `{ok:false, alasan:'belum_waktunya', opsTgl}` (anti halaman basi melewati 07:00 / bypass).
+- Tanggal lampau tetap boleh untuk lihat/buat.
+
 ---
 
 ## Ringkasan keputusan penting (sticky)
@@ -89,5 +97,5 @@ README diselaraskan dengan implementasi: tanpa arsip, Page5 berbasis pencarian, 
 - **Page5** = pencarian tanggal+nama+shift, `getPaketLaporan` (1 call/aksi), identitas terkunci saat baru, bed/diagnosis/alat ikut shift sebelumnya.
 - **Page8** = diagnosis/alat langsung dari `ws1` (date-precise), metrik pasien dari `Merge`; sheet Pivot opsional. **Pivot indikator bulanan** via `getPivotBulananPage8` (1 call/tahun).
 - **Page9** = logbook perawat, read-only dari spreadsheet eksternal.
-- **Hari operasional Page1** berganti pukul **07:00**.
+- **Hari operasional** berganti pukul **07:00** (Page1 badge **dan** batas/Default tanggal laporan baru Page5).
 - **Spreadsheet eksternal (Page7, Page9) READ-ONLY.**

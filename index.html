@@ -192,6 +192,10 @@ function toast(msg,type){
 function errH(err){loading(false);toast(err&&err.message?err.message:String(err),'err');}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function ymd(d){return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
+// Tanggal operasional dari server (hari berganti pukul 07:00). Dipakai Page5 sebagai
+// default & batas atas tanggal laporan baru. Fallback ke tanggal kalender browser.
+var OPS_TGL = <?!= initOpsTglJson ?>;
+function opsTgl(){return (typeof OPS_TGL==='string'&&OPS_TGL)?OPS_TGL:ymd(new Date());}
 function fmtDMY(s){if(!s)return'';var p=s.split('-');return p[2]+'/'+p[1]+'/'+p[0];}
 
 document.addEventListener('DOMContentLoaded',function(){
@@ -206,7 +210,7 @@ document.addEventListener('DOMContentLoaded',function(){
   var startShift= <?!= initShiftJson ?>;
   var startTgl  = <?!= initTglJson ?>;
   if(startNew==='1' && startNama){
-    gotoPage('p5',{isNew:true,namaPasien:startNama,shift:startShift,hariIni:startTgl||ymd(new Date())});
+    gotoPage('p5',{isNew:true,namaPasien:startNama,shift:startShift,hariIni:startTgl||opsTgl()});
     loaded.p5=true;
   } else if(startPage==='5'&&startNomor>0){
     gotoPage('p5',{viewNomor:startNomor});loaded.p5=true;

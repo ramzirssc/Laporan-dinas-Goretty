@@ -147,14 +147,15 @@ Mencegah dua laporan dengan kombinasi **pasien + tanggal + shift** yang sama, da
 1. Ambil **`LockService.getScriptLock()`** lalu `tryLock(20000)`. Jika gagal → `{ok:false, alasan:'sibuk'}`. Lepas lock di `finally`.
 2. Tentukan baru vs edit dari **`ui.isBaru`** (boolean dari client; jangan andalkan perbandingan nomor).
 3. **Entri baru:**
-   a. `cekDuplikatLaporan(pasien, tanggal, shift)` — jika ada → tolak: `{ok:false, alasan:'duplikat', nomor:<existing>}`.
-   b. `nomorBaru = baristerakhir() + 1` (server). **Abaikan `ui.nomor`.**
-   c. `appendRow` (A–Q) → `{ok:true, nomor:nomorBaru, mode:'baru'}`.
+   a. **Batas hari operasional** — jika `ui.tanggal` melebihi `tanggalOperasional_(tz)` (hari berganti pukul 07:00) → tolak: `{ok:false, alasan:'belum_waktunya', opsTgl:<tgl-operasional>}`. Benteng server terhadap halaman basi/bypass client (lihat §11).
+   b. `cekDuplikatLaporan(pasien, tanggal, shift)` — jika ada → tolak: `{ok:false, alasan:'duplikat', nomor:<existing>}`.
+   c. `nomorBaru = baristerakhir() + 1` (server). **Abaikan `ui.nomor`.**
+   d. `appendRow` (A–Q) → `{ok:true, nomor:nomorBaru, mode:'baru'}`.
 4. **Edit:** cari baris via `_cariRowByNomor_(ui.nomor)`. Tidak ketemu → `{ok:false, alasan:'tidak_ditemukan'}`. Ketemu → `setValues` A–Q → `{ok:true, nomor, mode:'edit'}`.
 5. Selalu kembalikan **JSON string**. Bersihkan cache `['p1_data','init_data']`.
 
 Nilai balik yang ditangani client:
-`{ok:true,...}` | `{ok:false, alasan:'duplikat', nomor}` | `{ok:false, alasan:'tidak_ditemukan'}` | `{ok:false, alasan:'sibuk'}`.
+`{ok:true,...}` | `{ok:false, alasan:'duplikat', nomor}` | `{ok:false, alasan:'belum_waktunya', opsTgl}` | `{ok:false, alasan:'tidak_ditemukan'}` | `{ok:false, alasan:'sibuk'}`.
 
 ### `cekDuplikatLaporan(pasien, tanggal, shift)`
 Membaca ws1 kolom A–E, mengembalikan `{count, nomor}` (nomor = laporan existing pertama yang cocok).
@@ -170,7 +171,7 @@ Membaca ws1 kolom A–E, mengembalikan `{count, nomor}` (nomor = laporan existin
 ## 6. Page5 — Tulis/Lihat/Edit Laporan (berbasis pencarian)
 
 Page5 **tidak lagi** memakai navigasi nomor (prev/next/cari nomor). Sebagai gantinya, satu baris pencarian di header "Laporan Dinas / Ruang Goretty":
-- **Tanggal** (default hari ini)
+- **Tanggal** (default = **tanggal operasional**, hari berganti pukul 07:00; `max` = tanggal operasional sehingga laporan baru tak bisa bertanggal melebihinya — lihat §11)
 - **Nama Pasien** (dropdown; default berisi pasien hari ini)
 - **Shift** (default Pagi)
 - Tombol **Buka** dan **+ Laporan Baru**
@@ -338,16 +339,22 @@ Target hardcode: `{ I:80, II:80, III:75, IV:80, V:43 }`. PK number: `{ I:1..V:5 
 - **Page4** — `getDataPage4`, `getAllLaporanPasien`, `cariSemuaNamaPasien`; tombol Refresh muat ulang tampilan aktif.
 - **Page7** — `getDaftarDinas(tm,ta)` dari spreadsheet eksternal; filter unit kolom I mengandung "G".
 
-### Hari operasional Page1 (pergantian pukul 07:00)
+### Hari operasional (pergantian pukul 07:00) — Page1 **dan** Page5
 
-`tanggalOperasional_(tz)`: badge nomor laporan di Page1 mengacu pada **hari operasional**, bukan tanggal kalender. Hari berganti **pukul 07:00** (zona waktu skrip): sebelum jam 7 → masih dihitung **hari sebelumnya**; mulai 07:00 → tanggal hari ini.
-- Contoh: 3 Juni 02:00 → badge masih milik 2 Juni (laporan kemarin tetap tampil, mis. `#10000 pagi`). 3 Juni 07:00 → badge kosong (siap laporan baru).
+`tanggalOperasional_(tz)`: hari operasional mengacu pada **hari operasional**, bukan tanggal kalender. Hari berganti **pukul 07:00** (zona waktu skrip): sebelum jam 7 → masih dihitung **hari sebelumnya**; mulai 07:00 → tanggal hari ini.
+- Contoh: 3 Juni 02:00 → badge Page1 masih milik 2 Juni (laporan kemarin tetap tampil, mis. `#10000 pagi`). 3 Juni 07:00 → badge kosong (siap laporan baru).
 - Tanggal operasional ini diteruskan ke Page5 (param URL `tg`) saat membuat laporan baru, dan dipakai untuk label tanggal Page1, agar konsisten dengan cek-duplikat & shift-sebelumnya.
-- Implementasi: `getDataPage1()` memakai `tanggalOperasional_(tz)` sebagai `hariIni`; `page1.html` meneruskan `&tg=` ke tab baru dan menampilkan label dari `obj.hariIni`.
-- Halaman lain (Page5 standalone, Page3/4) tetap memakai tanggal kalender. Jam topbar = jam dinding asli (sengaja tidak diubah).
+- Implementasi Page1: `getDataPage1()` memakai `tanggalOperasional_(tz)` sebagai `hariIni`; `page1.html` meneruskan `&tg=` ke tab baru dan menampilkan label dari `obj.hariIni`.
+
+**Batas tanggal laporan baru di Page5.** Sebelum pukul 07:00, laporan baru **tidak boleh** bertanggal hari kalender berjalan — tanggal maksimal = tanggal operasional. Contoh: 22 Juni pukul 06:00 → maksimal tanggal 21 Juni; setelah 07:00 → 22 Juni boleh.
+- **Default**: input Tanggal Page5 terisi tanggal operasional saat halaman dibuka (bukan `new Date()` browser).
+- **Server** (`doGet`) menyuntik `tanggalOperasional_(tz)` ke klien via `initOpsTglJson` → global `OPS_TGL` + helper `opsTgl()` (index.html). Fallback ke tanggal kalender browser bila kosong.
+- **Klien** (page5.html): `p5ApplyMaxTgl()` memasang atribut `max` pada input tanggal; `p5Open()` memblokir masuk mode baru bila tanggal > operasional dan menampilkan **warning** (toast + pesan area).
+- **Benteng server**: `simpandisheet` menolak entri baru bertanggal melebihi operasional → `{ok:false, alasan:'belum_waktunya', opsTgl}` (anti halaman yang dibiarkan terbuka melewati 07:00 / bypass). Lihat §5.
+- Tanggal **lampau** tetap boleh (lihat/buat). Halaman lain (Page3/4) memakai tanggal kalender. Jam topbar = jam dinding asli (sengaja tidak diubah).
 
 ### Param URL `doGet`
-`p` (halaman), `n` (nomor untuk lihat laporan), `nw=1`+`nm`+`sh`+`tg` (buka Page5 mode laporan baru: nama/shift/tanggal-operasional diteruskan). String pengguna disuntik ke JS secara aman lewat JSON (`initNamaJson`, `initShiftJson`, `initTglJson`).
+`p` (halaman), `n` (nomor untuk lihat laporan), `nw=1`+`nm`+`sh`+`tg` (buka Page5 mode laporan baru: nama/shift/tanggal-operasional diteruskan). String pengguna disuntik ke JS secara aman lewat JSON (`initNamaJson`, `initShiftJson`, `initTglJson`, `initOpsTglJson`).
 
 ---
 

@@ -45,6 +45,7 @@ function doGet(e) {
   tmpl.initNamaJson  = JSON.stringify((e&&e.parameter&&e.parameter.nm) ? String(e.parameter.nm) : '');
   tmpl.initShiftJson = JSON.stringify((e&&e.parameter&&e.parameter.sh) ? String(e.parameter.sh) : '');
   tmpl.initTglJson   = JSON.stringify((e&&e.parameter&&e.parameter.tg) ? String(e.parameter.tg) : '');
+  tmpl.initOpsTglJson = JSON.stringify(tanggalOperasional_(Session.getScriptTimeZone())); // tgl operasional (hari berganti 07:00)
   return tmpl.evaluate()
     .setTitle("Laporan Dinas Goretty")
     .addMetaTag("viewport","width=device-width,initial-scale=1")
@@ -495,6 +496,11 @@ function simpandisheet(ui) {
     var isBaru = (ui.isBaru === true || ui.isBaru === 'true'); // 2 — dari client, jangan tebak dari nomor
 
     if(isBaru) {
+      // 3a-pra — tolak laporan baru bertanggal melebihi hari operasional
+      // (hari berganti pukul 07:00; sebelum jam 7, tanggal hari ini belum boleh dipakai).
+      var opsTgl = tanggalOperasional_(Session.getScriptTimeZone());
+      if(String(ui.tanggal||'').substring(0,10) > opsTgl)
+        return JSON.stringify({ok:false, alasan:'belum_waktunya', opsTgl:opsTgl});
       // 3a — tolak jika kombinasi pasien+tanggal+shift sudah ada
       var dup = cekDuplikatLaporan(ui.pasien, ui.tanggal, ui.dinas);
       if(dup.count > 0) return JSON.stringify({ok:false, alasan:'duplikat', nomor:dup.nomor});
