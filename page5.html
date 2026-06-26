@@ -364,6 +364,7 @@ function p5Simpan(){
      if(nhEl&&p5Nama)nhEl.value=p5Nama;
      toast('Data berhasil disimpan (No. '+res.nomor+').','ok');
      loaded.p1=false;
+     try{localStorage.setItem('ldd_dataChanged',String(Date.now()));}catch(e){}
    })
    .withFailureHandler(function(e){loading(false);btn.disabled=false;errH(e);})
    .simpandisheet(ui);

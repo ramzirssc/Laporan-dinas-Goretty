@@ -175,7 +175,7 @@ function gotoPage(id,params){
   if(id==='p2'&&!loaded.p2){initP2();loaded.p2=true;}
   if(id==='p3'&&!loaded.p3){initP3();loaded.p3=true;}
   if(id==='p4'&&!loaded.p4){initP4();loaded.p4=true;}
-  if(id==='p5'){initP5(params);loaded.p5=true;}
+  if(id==='p5'&&(params||!loaded.p5)){initP5(params);loaded.p5=true;}
   if(id==='p7'&&!loaded.p7){initP7();loaded.p7=true;}
   if(id==='p8'&&!loaded.p8){initP8();loaded.p8=true;}
   if(id==='p9'&&!loaded.p9){initP9();loaded.p9=true;}
@@ -197,6 +197,15 @@ function ymd(d){return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+
 var OPS_TGL = <?!= initOpsTglJson ?>;
 function opsTgl(){return (typeof OPS_TGL==='string'&&OPS_TGL)?OPS_TGL:ymd(new Date());}
 function fmtDMY(s){if(!s)return'';var p=s.split('-');return p[2]+'/'+p[1]+'/'+p[0];}
+
+// Page5 boleh dibuka di tab terpisah (window.open). Setelah simpan sukses
+// di sana, ia menulis 'ldd_dataChanged' ke localStorage; tab ini mendengarkan
+// agar Page1/3/4 fetch ulang sekali saat dibuka kembali, bukan polling.
+window.addEventListener('storage',function(e){
+  if(e.key==='ldd_dataChanged'){
+    loaded.p1=false;loaded.p3=false;loaded.p4=false;
+  }
+});
 
 document.addEventListener('DOMContentLoaded',function(){
   var d=new Date();

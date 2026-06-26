@@ -103,7 +103,28 @@ var P1_SHIFT_W=145;
 var P1_FRZ=window.innerWidth<768?3:6;
 var P1_NOWRAP_LABELS=['jk','tgl lahir','tgl masuk','no.wa','hari ke-','tempat'];
 
-function initP1(){loading(true);_fetchP1();}
+function initP1(){loading(true);_fetchP1();p1PrefetchWebAppUrl();}
+
+// Ambil URL web app sekali saat Page1 dimuat, supaya klik badge nanti instan
+// (tidak menunggu round-trip server sebelum window.open → hindari popup-blocker).
+var P1_WEBAPP_URL='';
+function p1PrefetchWebAppUrl(){
+  google.script.run
+    .withSuccessHandler(function(url){P1_WEBAPP_URL=url||'';})
+    .withFailureHandler(function(){})
+    .getWebAppUrl();
+}
+function p1OpenP5Tab(qs,fallback){
+  if(P1_WEBAPP_URL){window.open(P1_WEBAPP_URL+qs,'_blank');}
+  else{
+    google.script.run
+      .withSuccessHandler(function(url){
+        if(url){window.open(url+qs,'_blank');}else{fallback();}
+      })
+      .withFailureHandler(fallback)
+      .getWebAppUrl();
+  }
+}
 
 function refreshP1(){
   // OPTIMASI: panggil invalidateP1Cache() dulu (hapus cache server),
@@ -233,28 +254,12 @@ function renderP1(raw){
 }
 
 function lihatLaporanTab(no){
-  google.script.run
-    .withSuccessHandler(function(url){
-      if(url){window.open(url+'?p=5&n='+no,'_blank');}
-      else{gotoPage('p5',{viewNomor:no});}
-    })
-    .withFailureHandler(function(){gotoPage('p5',{viewNomor:no});})
-    .getWebAppUrl();
+  p1OpenP5Tab('?p=5&n='+no,function(){gotoPage('p5',{viewNomor:no});});
 }
 function tulisLaporan(nama,shift,hariIni){
   // Buka tab baru berisi form laporan baru (nama/tanggal/shift terisi).
-  google.script.run
-    .withSuccessHandler(function(url){
-      if(url){
-        window.open(url+'?p=5&nw=1&nm='+encodeURIComponent(nama)+'&sh='+encodeURIComponent(shift)+'&tg='+encodeURIComponent(hariIni),'_blank');
-      }else{
-        gotoPage('p5',{isNew:true,namaPasien:nama,shift:shift,hariIni:hariIni});
-      }
-    })
-    .withFailureHandler(function(){
-      gotoPage('p5',{isNew:true,namaPasien:nama,shift:shift,hariIni:hariIni});
-    })
-    .getWebAppUrl();
+  var qs='?p=5&nw=1&nm='+encodeURIComponent(nama)+'&sh='+encodeURIComponent(shift)+'&tg='+encodeURIComponent(hariIni);
+  p1OpenP5Tab(qs,function(){gotoPage('p5',{isNew:true,namaPasien:nama,shift:shift,hariIni:hariIni});});
 }
 function escP1(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 // Bungkus argumen string sebagai literal JS aman di dalam atribut onclick (berkutip ganda).

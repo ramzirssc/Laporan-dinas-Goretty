@@ -356,6 +356,13 @@ Target hardcode: `{ I:80, II:80, III:75, IV:80, V:43 }`. PK number: `{ I:1..V:5 
 ### Param URL `doGet`
 `p` (halaman), `n` (nomor untuk lihat laporan), `nw=1`+`nm`+`sh`+`tg` (buka Page5 mode laporan baru: nama/shift/tanggal-operasional diteruskan). String pengguna disuntik ke JS secara aman lewat JSON (`initNamaJson`, `initShiftJson`, `initTglJson`, `initOpsTglJson`).
 
+### Badge Page1 → Page5 di tab baru (klik instan, tanpa server call berulang)
+
+- **Konsisten buka tab baru.** Baik badge bernomor (`lihatLaporanTab`) maupun badge kosong (`tulisLaporan`) membuka Page5 via `window.open(url+'?p=5&...', '_blank')`, fallback ke `gotoPage` SPA bila URL gagal didapat.
+- **Klik instan**: `initP1()` memanggil `p1PrefetchWebAppUrl()` sekali saat Page1 dimuat, menyimpan hasil `getWebAppUrl()` di `P1_WEBAPP_URL`. Helper `p1OpenP5Tab(qs, fallback)` memakai nilai cache itu agar `window.open` terjadi sinkron dengan klik (hindari popup-blocker); bila prefetch belum selesai, fallback satu kali tunggu server.
+- **Tidak fetch ulang tanpa alasan**: `gotoPage('p5', params)` di `index.html` hanya memanggil `initP5` bila ada `params` (deep link baru/lihat) **atau** belum pernah dimuat — klik tab "Tulis Laporan" yang kosong tidak memicu server call lagi.
+- **Sinkron antar-tab tanpa polling**: setelah simpan sukses di Page5 (`p5Simpan`), klien menulis `localStorage.setItem('ldd_dataChanged', Date.now())`. Tab asal (Page1/3/4) mendengarkan `window.addEventListener('storage', ...)` di `index.html` dan mereset `loaded.p1/p3/p4 = false`, sehingga sekali balik ke tab itu data di-fetch ulang otomatis.
+
 ---
 
 ## 12. Aturan Apps Script yang WAJIB diikuti

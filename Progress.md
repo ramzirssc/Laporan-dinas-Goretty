@@ -88,6 +88,12 @@ README diselaraskan dengan implementasi: tanpa arsip, Page5 berbasis pencarian, 
 - Benteng server: `simpandisheet` menolak entri baru bertanggal melebihi operasional → `{ok:false, alasan:'belum_waktunya', opsTgl}` (anti halaman basi melewati 07:00 / bypass).
 - Tanggal lampau tetap boleh untuk lihat/buat.
 
+## 12. Page1/Page5: tab baru instan + sinkron tanpa polling
+
+- Guard re-init Page5 di `index.html`: `gotoPage('p5', params)` hanya memanggil `initP5` bila ada `params` atau belum pernah dimuat — klik tab "Tulis Laporan" kosong tak lagi memicu server call berulang.
+- Sinkron antar-tab tanpa polling: `p5Simpan()` menulis `localStorage.setItem('ldd_dataChanged', ...)` setelah simpan sukses; `index.html` mendengarkan event `storage` dan mereset `loaded.p1/p3/p4` agar tab Page1/3/4 fetch ulang sekali saat dibuka kembali.
+- Klik badge instan: `initP1()` memanggil `p1PrefetchWebAppUrl()` sekali (cache di `P1_WEBAPP_URL`); helper `p1OpenP5Tab()` dipakai oleh `lihatLaporanTab`/`tulisLaporan` agar `window.open` terjadi sinkron dengan klik (bukan menunggu `getWebAppUrl()` setiap kali), dengan fallback satu kali tunggu bila prefetch belum selesai.
+
 ---
 
 ## Ringkasan keputusan penting (sticky)
