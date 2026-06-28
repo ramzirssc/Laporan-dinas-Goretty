@@ -118,9 +118,9 @@
         <div class="ff" style="flex:2;min-width:135px"><label>Nama Pasien</label>
           <select id="f-nama"><option value="">— Semua —</option></select></div>
         <div class="ff" style="flex:2;min-width:135px"><label>Perawat PJ</label>
-          <select id="f-pj"><option value="">— Semua —</option><?!=opsiperawat?></select></div>
+          <select id="f-pj"><option value="">— Semua —</option><?!= opsiperawat() ?></select></div>
         <div class="ff" style="flex:2;min-width:135px"><label>Perawat PP</label>
-          <select id="f-pp"><option value="">— Semua —</option><?!=opsiperawat?></select></div>
+          <select id="f-pp"><option value="">— Semua —</option><?!= opsiperawat() ?></select></div>
         <div style="display:flex;gap:7px;align-items:flex-end">
           <button class="btn btn-primary" onclick="p3Cari()">🔍 Cari</button>
           <button class="btn btn-ghost"   onclick="p3Reset()">Reset</button>

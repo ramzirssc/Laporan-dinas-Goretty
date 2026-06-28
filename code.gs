@@ -2,13 +2,14 @@
 //  code.gs  —  Laporan Dinas Goretty
 // ═══════════════════════════════════════════════════════
 
+// getSheets() dienumerasi SEKALI per eksekusi (kode top-level jalan di tiap server call).
+// Dulu getsheetbyid memanggil getSheets() 3×; sekarang 1× lalu di-find dari array sama.
+const _allSheets_ = SpreadsheetApp.getActiveSpreadsheet().getSheets();
 const ws1 = getsheetbyid(0);           // Laporan
 const ws2 = getsheetbyid(1476005123);  // Pasien hari ini
-const ws3 = getsheetbyid(2028034470);  // Lookup
 
 function getsheetbyid(gid) {
-  return SpreadsheetApp.getActiveSpreadsheet()
-    .getSheets().find(s => s.getSheetId() == gid);
+  return _allSheets_.find(s => s.getSheetId() == gid);
 }
 
 function opsi(range) {
@@ -23,11 +24,14 @@ function opsi(range) {
   return hasil;
 }
 
-const opsiperawat = opsi("E2:E").map(d=>`<option>${d}</option>`).join("");
-const opsipasien  = opsi("I2:I").map(d=>`<option>${d}</option>`).join("");
-const opsitempat  = opsi("C2:C").map(d=>`<option>${d[0]}</option>`).join("");
+// Opsi <option>/checkbox dipanggil LAZY (hanya saat template page3/page5 dirender di
+// doGet via `<?!= opsiperawat() ?>`), bukan precompute top-level — agar server call data
+// (Page1/Page8/…) tak ikut membaca sheet Lookup tiap kali. Output identik dgn sebelumnya.
+function opsiperawat(){ return opsi("E2:E").map(d=>`<option>${d}</option>`).join(""); }
+function opsipasien(){  return opsi("I2:I").map(d=>`<option>${d}</option>`).join(""); }
+function opsitempat(){  return opsi("C2:C").map(d=>`<option>${d[0]}</option>`).join(""); }
 
-const htmlCheckbox = [
+function htmlCheckbox(){ return [
   'CAPD','Chemoport','Cimino','CPAP','CRRT','CVC',
   'Doublelumen|Double lumen HD','Drain','Facemask','HFNC','ICON','Kateter',
   'Nasalkanul','Nefrostomi','NGT','NIV','PICC',
@@ -35,7 +39,7 @@ const htmlCheckbox = [
 ].map(function(item){
   var p = item.split("|");
   return `<label class="check-item" for="${p[0]}"><input type="checkbox" id="${p[0]}" class="multi" value="${p[0]}" disabled>${p[1]||p[0]}</label>`;
-}).join("\n");
+}).join("\n"); }
 
 function doGet(e) {
   var tmpl = HtmlService.createTemplateFromFile("index");
@@ -446,19 +450,6 @@ function cekDuplikatLaporan(pasien, tanggal, shift) {
   return {count:count, nomor:nomor};
 }
 
-function umuragamajaminan(sourcepasien) {
-  var rows = ws2.getRange(2,1,Math.max(ws2.getLastRow()-1,1),16).getValues();
-  var b = rows.find(function(r){return r[1]==sourcepasien;});
-  return JSON.stringify(b||null);
-}
-
-function getNomorBaruDanDataPasien(namaPasien, shift) {
-  var n = baristerakhir() + 1;                 // §4 — preview saja; server tetap generate ulang saat simpan
-  var rows = ws2.getRange(2,1,Math.max(ws2.getLastRow()-1,1),16).getValues();
-  var b = rows.find(function(r){return r[1]==namaPasien;});
-  return JSON.stringify({nomorBaru:n, dataPasien:b||null, shift:shift});
-}
-
 // Daftar nama pasien hari ini (dari ws2 kolom B) — untuk dropdown Page5.
 function getPasienHariIniNames() {
   var out = [];
@@ -567,11 +558,6 @@ function _prevShiftData_(nama, tanggal, shift) {
   }
   if(!found) return kosong;
   return {diagnosis:String(found[6]||''), alatmedik:String(found[8]||''), bed:String(found[16]||'')};
-}
-
-function getDiagnosisShiftSebelumnya(nama, tanggal, shift) {
-  var p = _prevShiftData_(nama, tanggal, shift);
-  return JSON.stringify({diagnosis:p.diagnosis, alatmedik:p.alatmedik});
 }
 
 // SATU panggilan server untuk Page5: daftar nama + data pasien + data shift

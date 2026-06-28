@@ -94,6 +94,15 @@ README diselaraskan dengan implementasi: tanpa arsip, Page5 berbasis pencarian, 
 - Sinkron antar-tab tanpa polling: `p5Simpan()` menulis `localStorage.setItem('ldd_dataChanged', ...)` setelah simpan sukses; `index.html` mendengarkan event `storage` dan mereset `loaded.p1/p3/p4` agar tab Page1/3/4 fetch ulang sekali saat dibuka kembali.
 - Klik badge instan: `initP1()` memanggil `p1PrefetchWebAppUrl()` sekali (cache di `P1_WEBAPP_URL`); helper `p1OpenP5Tab()` dipakai oleh `lihatLaporanTab`/`tulisLaporan` agar `window.open` terjadi sinkron dengan klik (bukan menunggu `getWebAppUrl()` setiap kali), dengan fallback satu kali tunggu bila prefetch belum selesai.
 
+## 13. Optimasi load & efisiensi (tanpa ubah logika)
+
+Penghematan murni performa; perilaku & output identik.
+- **`code.gs` top-level**: `getsheetbyid` kini memakai hasil `getSheets()` **1×** per eksekusi (dulu 3×). `opsiperawat/opsipasien/opsitempat/htmlCheckbox` diubah dari `const` precompute menjadi **fungsi lazy** — sheet Lookup tak lagi dibaca pada server call data (Page1/Page8/dll), hanya saat render template page3/page5 di `doGet`.
+- **Template**: `<?!=opsiperawat?>` → `<?!= opsiperawat() ?>` (juga `opsipasien/opsitempat/htmlCheckbox`) di `page3.html` & `page5.html`.
+- **Chart.js** (`page8.html`) jadi `<script defer>` → tak lagi memblokir parsing load awal bagi pengguna yang tak membuka Statistik.
+- **`index.html`**: tambah `preconnect` ke `fonts.gstatic.com` (host file font).
+- **Hapus kode/file mati**: var `ws3` + fungsi `umuragamajaminan`, `getNomorBaruDanDataPasien`, `getDiagnosisShiftSebelumnya` (sudah digantikan `getPaketLaporan`); file `laporan.html` & `page9.html.html` (tak di-`include` di mana pun). `clasp push` kini 11 file.
+
 ---
 
 ## Ringkasan keputusan penting (sticky)

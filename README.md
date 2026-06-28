@@ -42,7 +42,7 @@ Setiap halaman di-include ke `index.html` sebagai template dan punya fungsi `ini
 |---|---|---|
 | `ws1` = `getsheetbyid(0)` | 0 | **Laporan** — tabel utama laporan dinas |
 | `ws2` = `getsheetbyid(1476005123)` | 1476005123 | **Pasien hari ini** + dokter jaga (sel T2) |
-| `ws3` = `getsheetbyid(2028034470)` | 2028034470 | **Lookup** — opsi dropdown (perawat E2:E, pasien I2:I, Bed C2:C) |
+| **Lookup** (by name) | 2028034470 | Opsi dropdown (perawat E2:E, pasien I2:I, Bed C2:C). Dibaca via `opsi()` (cache 300s) — tak ada lagi const `ws3`. |
 | `Merge` (by name) | 463136828 | Indeks pasien permanen (master). Sumber **metrik pasien** Page8 (jaminan, DPJP, umur, lama rawat, kondisi). |
 | `Pivot Diagnosis` / `Pivot Alat Medik` (opsional) | 311832308 / 263609631 | Agregasi bulanan opsional dari `refreshPivot()`. **Page8 TIDAK bergantung pada sheet ini** (lihat §9). |
 
@@ -135,7 +135,7 @@ Membaca kolom A sekaligus, mengembalikan **nomor baris aktual (1-based)** untuk 
 
 ### Fungsi yang menyentuh nomor — semua lewat `baristerakhir()`
 - `getInitialData()` — `total = baristerakhir()`; baris ditemukan via `_cariRowByNomor_(total)`.
-- `getNomorBaruDanDataPasien()` — preview `nomorBaru = baristerakhir() + 1` (server tetap generate ulang saat simpan).
+- `simpandisheet()` — `nomorBaru = baristerakhir() + 1` (digenerate server saat simpan).
 
 ---
 
@@ -218,7 +218,7 @@ Sisi client (page5, `p5SetupBaru`):
 - Saat masuk mode baru, form dibersihkan lalu **bed/diagnosis/alat diisi dari shift sebelumnya** (bed dari shift sebelumnya menimpa bed default dari ws2).
 - Berlaku di kedua jalur pembuatan baru: dari Page1 (tab baru) dan dari kontrol pencarian Page5.
 
-> `getDiagnosisShiftSebelumnya(nama, tanggal, shift)` masih ada (delegasi ke `_prevShiftData_`, mengembalikan `{diagnosis, alatmedik}`) untuk kompatibilitas.
+> Data shift sebelumnya diambil lewat `getPaketLaporan` (field `sebelumnya` = `_prevShiftData_`). Wrapper lama `getDiagnosisShiftSebelumnya` sudah dihapus (tak dipakai).
 
 ---
 
@@ -375,3 +375,4 @@ Target hardcode: `{ I:80, II:80, III:75, IV:80, V:43 }`. PK number: `{ I:1..V:5 
 6. **Operasi per-nomor lewat `_cariRowByNomor_`** (posisi baris ≠ nomor).
 7. **Spreadsheet eksternal (Page7, Page9) READ-ONLY.** Tidak ada `setValue`/`appendRow`/`insertSheet` di sana.
 8. **Minimalkan server call.** Page5 memakai `getPaketLaporan` (1 call/aksi); Page9 1 call/tahun + cache klien.
+9. **Hemat kode top-level.** Statement top-level `code.gs` jalan di **setiap** server call, jadi: `getSheets()` dienumerasi sekali (`_allSheets_`), dan opsi dropdown adalah **fungsi lazy** (`opsiperawat()/opsipasien()/opsitempat()/htmlCheckbox()`) yang hanya dieksekusi saat template `doGet` membutuhkannya (`<?!= opsiperawat() ?>`), bukan precompute `const`.
