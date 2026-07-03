@@ -170,6 +170,20 @@ function p5ApplyMaxTgl(){
  var t2=document.getElementById('p5tanggal'); if(t2)t2.max=ot;
 }
 
+// Batas jam dinas (mirror UX dari server; SAMAKAN dgn SHIFT_MULAI_JAM di code.gs).
+// Laporan (tanggal D, shift S) baru boleh dibuat setelah jam mulai S pada hari D.
+// Validasi otoritatif tetap di server (`simpandisheet` → alasan 'shift_belum').
+var P5_SHIFT_MULAI_JAM={'Pagi':7,'Sore':14,'Malam':20};
+function p5HariEfektifShift(shift){
+ var jam=P5_SHIFT_MULAI_JAM[shift]; if(jam===undefined)jam=7;
+ var d=new Date(new Date().getTime()-jam*3600*1000);
+ return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
+}
+function p5JamMulai(shift){
+ var jam=P5_SHIFT_MULAI_JAM[shift]; if(jam===undefined)jam=7;
+ return ('0'+jam).slice(-2)+':00';
+}
+
 function p5BukaFromControls(){
  p5Open(document.getElementById('p5fNama').value,
         document.getElementById('p5fTgl').value,
@@ -189,12 +203,12 @@ function p5Open(nama, tgl, shift){
      if(!nama){p5KosongkanTampilan('Pilih nama pasien.');return;}
      if(pkt.existing){
        p5Render(pkt.existing);                                  // laporan sudah ada → mode lihat
-     }else if(String(tgl).substring(0,10) > p5OpsTgl()){
-       // Belum boleh buat laporan baru bertanggal melebihi hari operasional (berganti 07:00).
-       var maxT=fmtDMY(p5OpsTgl());
-       p5KosongkanTampilan('Belum bisa membuat laporan tanggal '+fmtDMY(tgl)+'. '
-         +'Hari operasional berganti pukul 07:00 — tanggal maksimal '+maxT+'.');
-       toast('Belum pukul 07:00: laporan baru maksimal tanggal '+maxT+'.','err');
+     }else if(String(tgl).substring(0,10) > p5HariEfektifShift(shift)){
+       // Jam dinas shift ini belum dimulai — laporan baru belum boleh dibuat.
+       // (Batas bawah saja; menulis setelah shift lewat tetap boleh.)
+       p5KosongkanTampilan('Belum waktunya dinas '+shift+' tanggal '+fmtDMY(tgl)+'. '
+         +'Laporan baru bisa dibuat mulai pukul '+p5JamMulai(shift)+'.');
+       toast('Belum waktunya dinas '+shift+' — mulai pukul '+p5JamMulai(shift)+'.','err');
      }else{
        p5SetupBaru(nama, tgl, shift, pkt.dataPasien, pkt.sebelumnya); // baru, terisi shift sebelumnya
      }
@@ -347,8 +361,9 @@ function p5Simpan(){
        if(res&&res.alasan==='duplikat'){
          toast('Laporan untuk pasien+tanggal+shift ini sudah ada (No. '+res.nomor+'). Membuka laporan tersebut…','err');
          p5LoadByNomor(res.nomor);
-       }else if(res&&res.alasan==='belum_waktunya'){
-         toast('Belum pukul 07:00: laporan baru maksimal tanggal '+fmtDMY(res.opsTgl)+'.','err');
+       }else if(res&&res.alasan==='shift_belum'){
+         toast('Belum waktunya dinas '+(res.shift||'')+' — laporan baru bisa dibuat mulai pukul '
+           +p5JamMulai(res.shift)+'.','err');
        }else if(res&&res.alasan==='tidak_ditemukan'){
          toast('Laporan tidak ditemukan untuk diedit.','err');
        }else if(res&&res.alasan==='sibuk'){

@@ -50,6 +50,9 @@
   .bso:hover{background:#e0a800;color:#fff}
   .bm{background:#e8eef6;border-color:#3a6ea8;color:#1a3a6a}   /* biru — tidak berubah */
   .bm:hover{background:#3a6ea8;color:#fff}
+  /* Shift yang jam dinasnya belum dimulai → tombol nonaktif abu-abu */
+  .bs-off,.bs-off:hover,.bs-off:active{background:#f0f2f5;border-color:#c9cfd8;
+    color:#98a1ae;cursor:not-allowed;transform:none}
   /* Badge nomor laporan: warna mengikuti shift masing-masing */
   .lap-badge{display:inline-flex;align-items:center;gap:3px;padding:5px 10px;
     font-size:11px;font-weight:700;border-radius:10px;min-height:34px;
@@ -171,6 +174,7 @@ function renderP1(raw){
     var list   =obj.pasien ||[];
     var sudah  =obj.sudahAda||{};
     var hariIni=obj.hariIni||'';
+    var shiftBuka=obj.shiftBuka||{}; // false = jam dinas shift belum mulai (dari server)
     if(obj.dokterJaga){
       var dEl=document.getElementById('tbar-dok');
       if(dEl)dEl.textContent='Dokter jaga: '+obj.dokterJaga;
@@ -226,6 +230,10 @@ function renderP1(raw){
               var badgeCls='lap-badge lap-badge-'+(s.label==='Pagi'?'pagi':s.label==='Sore'?'sore':'malam');
               sh+='<span class="'+badgeCls+'" onclick="lihatLaporanTab('+no+')">'
                  +'#'+no+'<span class="lap-sm">'+s.label+'</span></span> ';
+            }else if(shiftBuka[s.label]===false){
+              // Jam dinas shift ini belum dimulai → tombol nonaktif (tanpa onclick).
+              sh+='<button class="bs bs-off" disabled title="Belum waktunya dinas '+s.label+'">'
+                 +s.label+'</button> ';
             }else{
               sh+='<button class="bs '+s.cls+'" onclick="'
                  +'tulisLaporan('+p1JsArg(p.nama)+','+p1JsArg(s.label)+','+p1JsArg(hariIni)+')">'

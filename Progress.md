@@ -103,6 +103,14 @@ Penghematan murni performa; perilaku & output identik.
 - **`index.html`**: tambah `preconnect` ke `fonts.gstatic.com` (host file font).
 - **Hapus kode/file mati**: var `ws3` + fungsi `umuragamajaminan`, `getNomorBaruDanDataPasien`, `getDiagnosisShiftSebelumnya` (sudah digantikan `getPaketLaporan`); file `laporan.html` & `page9.html.html` (tak di-`include` di mana pun). `clasp push` kini 11 file.
 
+## 14. Batas jam dinas untuk laporan baru (server + badge Page1 + Page5)
+
+Guard lama hanya mengecek tanggal (rollover 07:00) → jam 08:00 sudah bisa membuat laporan Malam hari yang sama. Kini laporan baru `(tanggal D, shift S)` hanya boleh dibuat **setelah jam mulai S pada hari D**: Pagi 07:00 · Sore 14:00 · Malam 20:00. Batas bawah saja (menulis setelah shift lewat tetap boleh); edit laporan lama tak terpengaruh. Porting dari webapp Damianus (aturan & jam dinas sama, keputusan user).
+- **`code.gs`**: `SHIFT_MULAI_JAM` + `SHIFT_TOLERANSI_MENIT` (0) + `_hariEfektifShift_(shift)` — geser waktu sekarang mundur sebanyak jam mulai shift lalu `formatDate` `yyyy-MM-dd` (tz-safe; Malam lintas tengah malam otomatis benar; pola sama dengan `tanggalOperasional_`). Guard `simpandisheet` (jalur baru): tolak `ui.tanggal > _hariEfektifShift_(ui.dinas)` → `{ok:false, alasan:'shift_belum', shift, hariEfektif}` — **menggantikan & menyubsumsi** guard `belum_waktunya` lama. `getDataPage1` kirim `shiftBuka` (`{Pagi,Sore,Malam}`→bool; ikut cache `p1_data` 60 dtk → telat maks 1 menit di batas jam shift).
+- **`page1.html`**: tombol shift kosong yang `shiftBuka[label]===false` → nonaktif abu-abu (`.bs-off`, `disabled`, tanpa `onclick`); badge bernomor tetap bisa diklik.
+- **`page5.html`**: mirror `P5_SHIFT_MULAI_JAM`/`p5HariEfektifShift` — `p5Open()` blokir mode baru + toast bila tanggal > hari efektif shift; `p5Simpan` tangani alasan `'shift_belum'`. Default & atribut `max` tanggal (hari operasional) tidak berubah.
+- Dokumentasi: README §5 & §11, CLAUDE.md §6.
+
 ---
 
 ## Ringkasan keputusan penting (sticky)
@@ -113,4 +121,5 @@ Penghematan murni performa; perilaku & output identik.
 - **Page8** = diagnosis/alat langsung dari `ws1` (date-precise), metrik pasien dari `Merge`; sheet Pivot opsional. **Pivot indikator bulanan** via `getPivotBulananPage8` (1 call/tahun).
 - **Page9** = logbook perawat, read-only dari spreadsheet eksternal.
 - **Hari operasional** berganti pukul **07:00** (Page1 badge **dan** batas/Default tanggal laporan baru Page5).
+- **Jam dinas**: laporan baru hanya boleh dibuat setelah jam mulai shift-nya (Pagi 07:00 · Sore 14:00 · Malam 20:00) — batas bawah saja; edit tak terpengaruh.
 - **Spreadsheet eksternal (Page7, Page9) READ-ONLY.**

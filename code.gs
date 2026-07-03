@@ -78,6 +78,23 @@ function tanggalOperasional_(tz) {
   return Utilities.formatDate(new Date(ms), tz, 'yyyy-MM-dd');
 }
 
+// Batas JAM DINAS untuk laporan baru: laporan (tanggal D, shift S) baru boleh dibuat
+// setelah jam mulai S pada hari D. Batas BAWAH saja — menulis setelah shift lewat
+// tetap boleh; edit laporan lama tidak terpengaruh (guard hanya di jalur isBaru).
+var SHIFT_MULAI_JAM = { 'Pagi':7, 'Sore':14, 'Malam':20 }; // samakan dgn P5_SHIFT_MULAI_JAM (page5.html)
+var SHIFT_TOLERANSI_MENIT = 0; // kelonggaran menit sebelum shift (utk overlap serah-terima)
+
+// Hari efektif shift: geser "sekarang" mundur sebanyak jam mulai shift lalu format ke
+// yyyy-MM-dd — tanggal hasilnya baru "mencapai" D tepat saat shift D dimulai, sehingga
+// cukup dibandingkan sebagai string (D <= hasil). Shift Malam yang menembus tengah
+// malam otomatis benar. Pola sama dengan rollover 07:00 (tanggalOperasional_).
+function _hariEfektifShift_(shift) {
+  var jam = SHIFT_MULAI_JAM[shift];
+  if (jam === undefined) jam = 7; // fallback aman = rollover hari operasional
+  var ms = new Date().getTime() - jam*3600*1000 + SHIFT_TOLERANSI_MENIT*60*1000;
+  return Utilities.formatDate(new Date(ms), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+}
+
 function getDataPage1() {
   var cache = CacheService.getScriptCache();
   var cached = cache.get('p1_data');
@@ -159,8 +176,16 @@ function getDataPage1() {
         return {nama:String(r[iNama]||''), vals:vals};
       });
     var colDefs = COLS.map(function(c){return {lbl:c.lbl,w:c.w};});
+    // Status shift terbuka utk hari operasional: false = jam dinasnya belum mulai
+    // (tombol shift kosong di klien dirender nonaktif; badge existing tetap bisa diklik).
+    // Ikut ter-cache 60 dtk bersama payload — telat maks 1 menit di batas jam shift.
+    var shiftBuka = {
+      Pagi:  hariIni <= _hariEfektifShift_('Pagi'),
+      Sore:  hariIni <= _hariEfektifShift_('Sore'),
+      Malam: hariIni <= _hariEfektifShift_('Malam')
+    };
     var hasil = JSON.stringify({colDefs:colDefs, pasien:pasienList, sudahAda:sudahAda,
-      hariIni:hariIni, dokterJaga:dokterJaga});
+      hariIni:hariIni, dokterJaga:dokterJaga, shiftBuka:shiftBuka});
     cache.put('p1_data', hasil, 60);
     return hasil;
   } catch(errFatal) {
@@ -487,11 +512,12 @@ function simpandisheet(ui) {
     var isBaru = (ui.isBaru === true || ui.isBaru === 'true'); // 2 — dari client, jangan tebak dari nomor
 
     if(isBaru) {
-      // 3a-pra — tolak laporan baru bertanggal melebihi hari operasional
-      // (hari berganti pukul 07:00; sebelum jam 7, tanggal hari ini belum boleh dipakai).
-      var opsTgl = tanggalOperasional_(Session.getScriptTimeZone());
-      if(String(ui.tanggal||'').substring(0,10) > opsTgl)
-        return JSON.stringify({ok:false, alasan:'belum_waktunya', opsTgl:opsTgl});
+      // 3a-pra — tolak laporan baru yang jam dinas shift-nya belum dimulai
+      // (menyubsumsi guard hari operasional lama: tanggal masa depan → jam mulai
+      // shift-nya juga di masa depan → otomatis tertolak).
+      var hariEfektifShift = _hariEfektifShift_(ui.dinas);
+      if(String(ui.tanggal||'').substring(0,10) > hariEfektifShift)
+        return JSON.stringify({ok:false, alasan:'shift_belum', shift:ui.dinas, hariEfektif:hariEfektifShift});
       // 3a — tolak jika kombinasi pasien+tanggal+shift sudah ada
       var dup = cekDuplikatLaporan(ui.pasien, ui.tanggal, ui.dinas);
       if(dup.count > 0) return JSON.stringify({ok:false, alasan:'duplikat', nomor:dup.nomor});

@@ -62,6 +62,7 @@ Validasi angka (Page8/Page9) hanya bisa dilakukan user terhadap data nyata — s
 ## 6. Hal khas yang mudah terlewat
 
 - **Hari operasional Page1 berganti pukul 07:00** (`tanggalOperasional_`): sebelum jam 7 = hari sebelumnya. Tanggal ini diteruskan ke Page5 lewat param URL `tg`. Lihat README §11.
+- **Batas jam dinas laporan baru** (`_hariEfektifShift_`, jam di `SHIFT_MULAI_JAM`: Pagi 07:00 · Sore 14:00 · Malam 20:00): guard `simpandisheet` → alasan `shift_belum`; badge Page1 via `shiftBuka` (tombol `.bs-off`); mirror klien di Page5 (`P5_SHIFT_MULAI_JAM` — samakan dengan server). Batas bawah saja; edit tak terpengaruh. Lihat README §11.
 - **Shift sebelumnya** (Pagi←Malam-kemarin, Sore←Pagi, Malam←Sore) mengisi **bed + diagnosis + alat** saat laporan baru (`_prevShiftData_`).
 - **Page5 berbasis pencarian tanggal+nama+shift**, bukan navigasi nomor. Identitas dikunci saat mode baru; duplikat saat simpan → buka laporan existing (mode lihat).
 - **`htmlCheckbox` / `opsi*`** dirender server-side sebagai string HTML lalu disisipkan via `<?!= … ?>`. ID checkbox alat = bagian sebelum `|` pada `ALAT_LIST` (mis. `Doublelumen`).

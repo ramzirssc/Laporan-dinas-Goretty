@@ -147,7 +147,7 @@ Mencegah dua laporan dengan kombinasi **pasien + tanggal + shift** yang sama, da
 1. Ambil **`LockService.getScriptLock()`** lalu `tryLock(20000)`. Jika gagal → `{ok:false, alasan:'sibuk'}`. Lepas lock di `finally`.
 2. Tentukan baru vs edit dari **`ui.isBaru`** (boolean dari client; jangan andalkan perbandingan nomor).
 3. **Entri baru:**
-   a. **Batas hari operasional** — jika `ui.tanggal` melebihi `tanggalOperasional_(tz)` (hari berganti pukul 07:00) → tolak: `{ok:false, alasan:'belum_waktunya', opsTgl:<tgl-operasional>}`. Benteng server terhadap halaman basi/bypass client (lihat §11).
+   a. **Batas jam dinas** — jika `ui.tanggal` melebihi `_hariEfektifShift_(ui.dinas)` (jam mulai shift: Pagi 07:00 · Sore 14:00 · Malam 20:00; lihat §11) → tolak: `{ok:false, alasan:'shift_belum', shift:<shift>, hariEfektif:<tgl>}`. Menyubsumsi guard hari operasional lama (tanggal masa depan otomatis tertolak). Benteng server terhadap halaman basi/bypass client.
    b. `cekDuplikatLaporan(pasien, tanggal, shift)` — jika ada → tolak: `{ok:false, alasan:'duplikat', nomor:<existing>}`.
    c. `nomorBaru = baristerakhir() + 1` (server). **Abaikan `ui.nomor`.**
    d. `appendRow` (A–Q) → `{ok:true, nomor:nomorBaru, mode:'baru'}`.
@@ -155,7 +155,7 @@ Mencegah dua laporan dengan kombinasi **pasien + tanggal + shift** yang sama, da
 5. Selalu kembalikan **JSON string**. Bersihkan cache `['p1_data','init_data']`.
 
 Nilai balik yang ditangani client:
-`{ok:true,...}` | `{ok:false, alasan:'duplikat', nomor}` | `{ok:false, alasan:'belum_waktunya', opsTgl}` | `{ok:false, alasan:'tidak_ditemukan'}` | `{ok:false, alasan:'sibuk'}`.
+`{ok:true,...}` | `{ok:false, alasan:'duplikat', nomor}` | `{ok:false, alasan:'shift_belum', shift, hariEfektif}` | `{ok:false, alasan:'tidak_ditemukan'}` | `{ok:false, alasan:'sibuk'}`.
 
 ### `cekDuplikatLaporan(pasien, tanggal, shift)`
 Membaca ws1 kolom A–E, mengembalikan `{count, nomor}` (nomor = laporan existing pertama yang cocok).
@@ -334,7 +334,7 @@ Target hardcode: `{ I:80, II:80, III:75, IV:80, V:43 }`. PK number: `{ I:1..V:5 
 
 ## 11. Halaman Lain (ringkas)
 
-- **Page1** — daftar pasien hari ini (`getDataPage1`, cache `p1_data` 60 detik). `sudahAda` memetakan `(nama|shift)`→nomor laporan untuk **hari operasional** (lihat di bawah). Klik shift kosong → `tulisLaporan()` membuka **tab baru** ke `?p=5&nw=1&nm=&sh=&tg=` (fallback `gotoPage` mode baru). `invalidateP1Cache()` untuk Refresh.
+- **Page1** — daftar pasien hari ini (`getDataPage1`, cache `p1_data` 60 detik). `sudahAda` memetakan `(nama|shift)`→nomor laporan untuk **hari operasional** (lihat di bawah). `shiftBuka` menandai shift yang jam dinasnya belum dimulai → tombol shift kosong dirender **nonaktif** (`.bs-off`); badge bernomor tetap bisa diklik. Klik shift kosong (aktif) → `tulisLaporan()` membuka **tab baru** ke `?p=5&nw=1&nm=&sh=&tg=` (fallback `gotoPage` mode baru). `invalidateP1Cache()` untuk Refresh.
 - **Page3** — `getLaporan(filter)` (default 3 hari terakhir); `getNamaPasienDalamRentang(tm,ta)`; edit inline via `updateLaporan` (§8); Refresh & Cetak PDF.
 - **Page4** — `getDataPage4`, `getAllLaporanPasien`, `cariSemuaNamaPasien`; tombol Refresh muat ulang tampilan aktif.
 - **Page7** — `getDaftarDinas(tm,ta)` dari spreadsheet eksternal; filter unit kolom I mengandung "G".
@@ -346,11 +346,12 @@ Target hardcode: `{ I:80, II:80, III:75, IV:80, V:43 }`. PK number: `{ I:1..V:5 
 - Tanggal operasional ini diteruskan ke Page5 (param URL `tg`) saat membuat laporan baru, dan dipakai untuk label tanggal Page1, agar konsisten dengan cek-duplikat & shift-sebelumnya.
 - Implementasi Page1: `getDataPage1()` memakai `tanggalOperasional_(tz)` sebagai `hariIni`; `page1.html` meneruskan `&tg=` ke tab baru dan menampilkan label dari `obj.hariIni`.
 
-**Batas tanggal laporan baru di Page5.** Sebelum pukul 07:00, laporan baru **tidak boleh** bertanggal hari kalender berjalan — tanggal maksimal = tanggal operasional. Contoh: 22 Juni pukul 06:00 → maksimal tanggal 21 Juni; setelah 07:00 → 22 Juni boleh.
-- **Default**: input Tanggal Page5 terisi tanggal operasional saat halaman dibuka (bukan `new Date()` browser).
-- **Server** (`doGet`) menyuntik `tanggalOperasional_(tz)` ke klien via `initOpsTglJson` → global `OPS_TGL` + helper `opsTgl()` (index.html). Fallback ke tanggal kalender browser bila kosong.
-- **Klien** (page5.html): `p5ApplyMaxTgl()` memasang atribut `max` pada input tanggal; `p5Open()` memblokir masuk mode baru bila tanggal > operasional dan menampilkan **warning** (toast + pesan area).
-- **Benteng server**: `simpandisheet` menolak entri baru bertanggal melebihi operasional → `{ok:false, alasan:'belum_waktunya', opsTgl}` (anti halaman yang dibiarkan terbuka melewati 07:00 / bypass). Lihat §5.
+**Batas jam dinas laporan baru (Page1 & Page5).** Laporan baru `(tanggal D, shift S)` hanya boleh dibuat **setelah jam mulai S pada hari D**: Pagi **07:00** · Sore **14:00** · Malam **20:00** (`SHIFT_MULAI_JAM`; kelonggaran menit via `SHIFT_TOLERANSI_MENIT`, default 0). Ini batas **bawah** saja — menulis setelah shift lewat tetap boleh (mis. dinas Sore menulis pukul 20:00 diizinkan); **edit laporan lama tidak terpengaruh**. Menyubsumsi batas hari operasional lama: tanggal melebihi hari operasional otomatis tertolak karena jam mulai shift-nya belum tiba.
+- **Mekanisme** — `_hariEfektifShift_(shift)`: geser waktu sekarang **mundur sebanyak jam mulai shift** lalu format `yyyy-MM-dd` (tz skrip); laporan boleh bila `D <= hasil`. Tanggal hasil geseran baru "mencapai" D tepat saat shift D dimulai — tz-safe, dan shift Malam yang menembus tengah malam otomatis benar (pola sama dengan `tanggalOperasional_`).
+- **Benteng server** — `simpandisheet` menolak entri baru bila `ui.tanggal > _hariEfektifShift_(ui.dinas)` → `{ok:false, alasan:'shift_belum', shift, hariEfektif}` (anti halaman basi/bypass client). Lihat §5.
+- **Page1** — `getDataPage1` mengirim `shiftBuka` (`{Pagi,Sore,Malam}` → bool untuk hari operasional). Tombol shift kosong yang `false` dirender nonaktif abu-abu (`.bs-off`, `disabled`, `title="Belum waktunya dinas …"`, tanpa `onclick`); badge bernomor tetap bisa diklik. Ikut cache `p1_data` 60 detik → status bisa telat maks 1 menit tepat di batas jam shift (tombol Refresh menyegarkan).
+- **Page5 (mirror UX)** — `P5_SHIFT_MULAI_JAM` + `p5HariEfektifShift(shift)` (samakan dengan server): `p5Open()` memblokir masuk mode baru + **warning** (toast + pesan area) bila tanggal > hari efektif shift; `p5Simpan` menangani alasan `'shift_belum'`.
+- **Default & `max` tanggal** tetap dari tanggal operasional: input Tanggal terisi tanggal operasional saat halaman dibuka (bukan `new Date()` browser); `doGet` menyuntik via `initOpsTglJson` → global `OPS_TGL`/`opsTgl()` (index.html, fallback tanggal kalender browser); `p5ApplyMaxTgl()` memasang atribut `max`.
 - Tanggal **lampau** tetap boleh (lihat/buat). Halaman lain (Page3/4) memakai tanggal kalender. Jam topbar = jam dinding asli (sengaja tidak diubah).
 
 ### Param URL `doGet`
