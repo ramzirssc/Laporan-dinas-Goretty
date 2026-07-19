@@ -18,7 +18,8 @@ Tujuan utama: pencatatan untuk **audit, surveilans, penelitian, dan statistik** 
 | Berkas | Peran |
 |---|---|
 | `code.gs` | Seluruh logika server (Apps Script) |
-| `index.html` | Shell SPA: topbar, router antar-halaman, util global (`esc`, `ymd`, `fmtDMY`, `toast`, `loading`, `errH`, `gotoPage`). Menerima param URL `p`, `n`, `nw/nm/sh` (buka Page5). |
+| `index.html` | Shell SPA: topbar (logo RS St. Carolus di kiri + teks), router antar-halaman, util global (`esc`, `ymd`, `fmtDMY`, `toast`, `loading`, `errH`, `gotoPage`). Menerima param URL `p`, `n`, `nw/nm/sh` (buka Page5). |
+| `assets/logo_carolus_base64.txt` | Sumber logo RS St. Carolus (data URI WebP base64). File repo saja — **tidak** di-`push` clasp (ekstensi tak dikenal). Isinya di-*inline* ke `src` `<img class="topbar-logo">` di `index.html`. Diambil dari proyek Endoskopi. |
 | `page1.html` | Daftar pasien hari ini. Klik tombol shift kosong → **buka tab baru** ke Page5 (laporan baru). Klik badge bernomor → buka laporan tsb. |
 | `page2.html` | Input/keluar pasien (embed Google Form) |
 | `page3.html` | Lihat laporan (tabel, filter, edit inline diagnosis+laporan, tombol Refresh & Cetak PDF) |
@@ -33,6 +34,8 @@ Tujuan utama: pencatatan untuk **audit, surveilans, penelitian, dan statistik** 
 > **Tab "Jadwal jaga Anestesi"** (paling kanan) BUKAN halaman SPA. Ia hanya tombol `.tab-btn` di `index.html` yang menjalankan `window.open('<url web app eksternal>','_blank')` — membuka web app Apps Script eksternal (jadwal jaga anestesi) di tab browser baru, tidak mengubah `page-section` aktif. **Wajib diletakkan sebagai tombol terakhir**: router `gotoPage` memetakan tombol ke halaman lewat indeks (`PAGE_IDS[i]`), jadi tombol non-halaman harus di akhir agar indeks tombol lain tetap benar; tombol ini memetakan ke `PAGE_IDS[8]` (undefined) sehingga tak pernah jadi "active". Jangan tambahkan ke `PAGE_IDS`/`loaded`/`gotoPage`.
 
 Setiap halaman di-include ke `index.html` sebagai template dan punya fungsi `initPN(params)` yang dipanggil router (`gotoPage`) saat halaman dibuka.
+
+> **Logo topbar.** Logo RS St. Carolus tampil di ujung kiri topbar, sebelum blok teks "RS St. Carolus / IPI — Goretty" (`<img class="topbar-logo">`). Sumbernya data URI WebP base64 yang di-*inline* langsung ke atribut `src` (bukan file yang diserve terpisah — HtmlService tak melayani gambar statis lewat URL). Master datanya di `assets/logo_carolus_base64.txt`; bila logo diganti, perbarui file itu lalu inline ulang ke `src`. Base64 aman di atribut `src` berkutip ganda (tak ada karakter kutip di dalamnya).
 
 ### Identitas teknis
 - **Spreadsheet utama (terikat):** `17PUDkWDfNS_FDvjZVCA9r_mdul-T8uYNSevCWxfYgpk`
