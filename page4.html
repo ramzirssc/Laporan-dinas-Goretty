@@ -206,6 +206,7 @@
 var p4dMode = 'hari';   // 'hari' | 'search'
 var p4dSearchRes = [];
 var p4dTimer = null;
+var p4dHariData = null; // cache payload getDataPage4 (semua pasien hari ini, 6 laporan/pasien)
 
 function initP4() {
   var today = new Date(), dua = new Date();
@@ -225,6 +226,7 @@ function p4dLoadHariIni() {
       document.getElementById('p4d-loader').style.display = 'none';
       try {
         var obj = JSON.parse(raw);
+        p4dHariData = obj; // cache: dipakai p4dTampilkan tanpa server call ulang
         var pasienHariIni = obj.pasienHariIni || [];
         // Isi dropdown
         var sel = document.getElementById('p4d-nama'), cur = sel.value;
@@ -243,9 +245,18 @@ function p4dLoadHariIni() {
 function p4dOnNamaChange() { p4dTampilkan(); }
 
 function p4dTampilkan() {
-  if(p4dMode === 'search') p4dSearchClear();
+  var fromSearch = (p4dMode === 'search');
+  if(fromSearch) p4dSearchClear();
   var nama = document.getElementById('p4d-nama').value;
   p4dMode = 'hari';
+  // OPTIMASI: data hari-ini (semua pasien, 6 laporan/pasien) sudah ada di klien →
+  // ganti pilihan nama = render dari cache tanpa server call. Fallback fetch bila
+  // cache belum ada, atau saat baru keluar dari mode search (perilaku asli dipertahankan).
+  if(!fromSearch && p4dHariData){
+    var targets = nama ? [nama] : (p4dHariData.pasienHariIni || []);
+    p4dRenderObjek(p4dHariData.laporan || {}, targets, '6 laporan terakhir');
+    return;
+  }
   p4dShowLoader();
   google.script.run
     .withSuccessHandler(function(raw){

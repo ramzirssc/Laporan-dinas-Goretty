@@ -198,6 +198,8 @@ Mengembalikan JSON:
 }
 ```
 > Tujuan: hindari rentetan server call (dulu: daftar nama → data pasien → cek duplikat → shift sebelumnya). Sekarang **1 call per aksi**.
+>
+> **Efisiensi IO:** di dalam call itu, `ws2` dibaca **sekali** (A–P → daftar nama hari ini + data pasien) dan `ws1` dibaca **sekali** (A–Q → cek-duplikat + baris existing + shift sebelumnya, via helper murni `_cekDuplikatFrom_`/`_prevShiftDataFrom_`). Dulu 6 pembacaan sheet per call, kini 2. Output identik.
 
 ### Field yang dikunci saat membuat laporan BARU (mode baru)
 Terkunci (abu-abu, tidak bisa diubah): **Nama, Tanggal, Shift, DPJP, Konsulen Lainnya, Agama, Jaminan, Umur, Hari ke**.
@@ -317,6 +319,7 @@ Halaman statistik logbook perawat. **HANYA MEMBACA** spreadsheet eksternal via `
 Target hardcode: `{ I:80, II:80, III:75, IV:80, V:43 }`. PK number: `{ I:1..V:5 }`.
 
 ### Fungsi backend (read-only)
+- `getInitGoretty()` → `{perawat:[{npk,nama,pk}], tahun:number[]}` — **init 1 round-trip** (gabungan `getDaftarPerawatGoretty` + `getTahunTersediaGoretty`; output identik). Dipakai `initP9`.
 - `getDaftarPerawatGoretty()` → `[{npk, nama, pk}]` (urut nama).
 - `getTahunTersediaGoretty()` → `number[]` (tahun yang ada datanya).
 - `getAgregatTahunGoretty(tahun, force?)` → agregat 1 tahun untuk SEMUA perawat (JSON). Cache server `agg_goretty_<tahun>` **ber-chunk** (TTL 30 menit tahun berjalan / 6 jam tahun lampau).
@@ -328,7 +331,7 @@ Target hardcode: `{ I:80, II:80, III:75, IV:80, V:43 }`. PK number: `{ I:1..V:5 
 - Nilai dikirim sebagai **pecahan**; format `%` di klien (`P9_FACTOR = 100`, 2 desimal koma).
 
 ### Frontend (prefiks `p9`)
-- **Satu server call per tahun**; ganti bulan/perawat di-handle dari cache klien in-memory (tanpa server).
+- **Init 1 server call** (`getInitGoretty` → perawat + tahun) lalu **1 call per tahun** (`getAgregatTahunGoretty`); ganti bulan/perawat di-handle dari cache klien in-memory (tanpa server).
 - Filter Perawat/Bulan/Tahun; default Semua perawat + bulan & tahun berjalan.
 - Tampilan 1 perawat: kartu ringkasan + tabel 8 domain + tabel 5 PK.
 - Tampilan "Semua perawat": tabel rekap (NPK/Nama sticky, scroll horizontal) + **baris RATA-RATA**.
@@ -341,7 +344,7 @@ Target hardcode: `{ I:80, II:80, III:75, IV:80, V:43 }`. PK number: `{ I:1..V:5 
 
 - **Page1** — daftar pasien hari ini (`getDataPage1`, cache `p1_data` 60 detik). `sudahAda` memetakan `(nama|shift)`→nomor laporan untuk **hari operasional** (lihat di bawah). `shiftBuka` menandai shift yang jam dinasnya belum dimulai → tombol shift kosong dirender **nonaktif** (`.bs-off`); badge bernomor tetap bisa diklik. Klik shift kosong (aktif) → `tulisLaporan()` membuka **tab baru** ke `?p=5&nw=1&nm=&sh=&tg=` (fallback `gotoPage` mode baru). `invalidateP1Cache()` untuk Refresh.
 - **Page3** — `getLaporan(filter)` (default 3 hari terakhir); `getNamaPasienDalamRentang(tm,ta)`; edit inline via `updateLaporan` (§8); Refresh & Cetak PDF.
-- **Page4** — `getDataPage4`, `getAllLaporanPasien`, `cariSemuaNamaPasien`; tombol Refresh muat ulang tampilan aktif.
+- **Page4** — `getDataPage4`, `getAllLaporanPasien`, `cariSemuaNamaPasien`; tombol Refresh muat ulang tampilan aktif. Payload "pasien hari ini" (semua pasien, 6 laporan/pasien) di-**cache klien** (`p4dHariData`): ganti pilihan nama di dropdown me-render dari cache **tanpa server call**. Jalur keluar-mode-search & Refresh tetap fetch.
 - **Page7** — `getDaftarDinas(tm,ta)` dari spreadsheet eksternal; filter unit kolom I mengandung "G".
 
 ### Hari operasional (pergantian pukul 07:00) — Page1 **dan** Page5

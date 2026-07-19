@@ -73,21 +73,17 @@ var p9Ready    = false;
 function initP9(){
   if(p9Ready) return;
   loading(true);
+  // SATU round-trip: perawat + tahun sekaligus (dulu 2 panggilan beruntun).
   google.script.run
-    .withSuccessHandler(function(rawP){
-      try{p9Perawat=JSON.parse(rawP);}catch(e){p9Perawat=[];}
-      google.script.run
-        .withSuccessHandler(function(rawT){
-          loading(false);
-          var years=[]; try{years=JSON.parse(rawT);}catch(e){}
-          p9Ready=true;
-          p9Setup(years);
-        })
-        .withFailureHandler(function(e){loading(false);errH(e);})
-        .getTahunTersediaGoretty();
+    .withSuccessHandler(function(raw){
+      loading(false);
+      var init={perawat:[],tahun:[]}; try{init=JSON.parse(raw);}catch(e){}
+      p9Perawat=init.perawat||[];
+      p9Ready=true;
+      p9Setup(init.tahun||[]);
     })
     .withFailureHandler(function(e){loading(false);errH(e);})
-    .getDaftarPerawatGoretty();
+    .getInitGoretty();
 }
 
 function p9Setup(years){

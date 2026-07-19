@@ -456,6 +456,13 @@ function cekDuplikatLaporan(pasien, tanggal, shift) {
   if(lr < 2) return {count:0, nomor:0};
   var tz = Session.getScriptTimeZone();
   var data = ws1.getRange(2, 1, lr - 1, 5).getValues(); // A..E: nomor,tgl,shift,pj,pasien
+  return _cekDuplikatFrom_(data, pasien, tanggal, shift, tz);
+}
+
+// Versi murni: hitung duplikat dari data yang SUDAH dibaca (kol A..E cukup).
+// Dipisah agar getPaketLaporan bisa memakai satu pembacaan ws1 untuk beberapa keperluan
+// (cek duplikat + baris existing + shift sebelumnya) tanpa membaca sheet berulang.
+function _cekDuplikatFrom_(data, pasien, tanggal, shift, tz) {
   var pTgt  = String(pasien||'').toLowerCase().trim();
   var tgTgt = String(tanggal||'').substring(0,10);
   var sTgt  = String(shift||'').toLowerCase().trim();
@@ -552,10 +559,17 @@ function simpandisheet(ui) {
 //   Pagi  → ambil Malam (hari SEBELUMNYA)
 // _prevShiftData_ kembalikan {diagnosis, alatmedik, bed} dari 1 shift sebelumnya.
 function _prevShiftData_(nama, tanggal, shift) {
-  var kosong = {diagnosis:'', alatmedik:'', bed:''};
   var lr = ws1.getLastRow();
-  if(lr < 2) return kosong;
+  if(lr < 2) return {diagnosis:'', alatmedik:'', bed:''};
   var tz = Session.getScriptTimeZone();
+  var data = ws1.getRange(2, 1, lr - 1, 17).getValues(); // A..Q (Q=Bed idx16)
+  return _prevShiftDataFrom_(data, nama, tanggal, shift, tz);
+}
+
+// Versi murni: hitung data shift sebelumnya dari data yang SUDAH dibaca (kol A..Q).
+// Dipisah agar getPaketLaporan memakai satu pembacaan ws1 (lihat _cekDuplikatFrom_).
+function _prevShiftDataFrom_(data, nama, tanggal, shift, tz) {
+  var kosong = {diagnosis:'', alatmedik:'', bed:''};
   var sh = String(shift||'').toLowerCase().trim();
   var tgtTgl = String(tanggal||'').substring(0,10);
   var prevShift = '', prevTgl = '';
@@ -568,7 +582,6 @@ function _prevShiftData_(nama, tanggal, shift) {
   } else {
     return kosong;
   }
-  var data = ws1.getRange(2, 1, lr - 1, 17).getValues(); // A..Q (Q=Bed idx16)
   var namaLc = String(nama||'').toLowerCase().trim();
   var found = null;
   for(var i = 0; i < data.length; i++) {
@@ -593,27 +606,51 @@ function getPaketLaporan(nama, tanggal, shift) {
   var tz = Session.getScriptTimeZone();
   var today = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
   var out = { namaList:[], dataPasien:null, sebelumnya:{diagnosis:'',alatmedik:'',bed:''}, existing:null };
+  var isToday = (!tanggal || tanggal === today);
 
-  // 1) daftar nama: hari ini → ws2; tanggal lain → pasien dgn laporan tgl tsb
-  if(!tanggal || tanggal === today) out.namaList = JSON.parse(getPasienHariIniNames());
-  else                              out.namaList = JSON.parse(getNamaPasienDalamRentang(tanggal, tanggal));
+  // ws2 dibaca SEKALI (A..P): sumber daftar nama hari ini + data pasien.
+  var ws2Rows = null;
+  function ws2Data(){
+    if(ws2Rows === null){
+      var lr2 = ws2.getLastRow();
+      ws2Rows = (lr2 >= 2) ? ws2.getRange(2,1,lr2-1,16).getValues() : [];
+    }
+    return ws2Rows;
+  }
+
+  // 1) daftar nama: hari ini → ws2 (kol B, unik urut kemunculan; sama dgn
+  //    getPasienHariIniNames); tanggal lain → pasien dgn laporan tgl tsb (ws1).
+  if(isToday){
+    var seen = {};
+    ws2Data().forEach(function(r){
+      var n = String(r[1]||'').trim();
+      if(n && !seen[n]){ seen[n] = true; out.namaList.push(n); }
+    });
+  } else {
+    out.namaList = JSON.parse(getNamaPasienDalamRentang(tanggal, tanggal));
+  }
 
   if(!nama) return JSON.stringify(out);
 
-  // 2) data pasien dari ws2
-  var rows = ws2.getRange(2,1,Math.max(ws2.getLastRow()-1,1),16).getValues();
-  var b = rows.find(function(r){return r[1]==nama;});
+  // 2) data pasien dari ws2 (pembacaan yang sama)
+  var b = ws2Data().find(function(r){return r[1]==nama;});
   out.dataPasien = b || null;
 
-  // 3) laporan existing (nama+tanggal+shift)
-  var dup = cekDuplikatLaporan(nama, tanggal, shift);
-  if(dup.count > 0) {
-    var baris = _cariRowByNomor_(dup.nomor);
-    if(baris > 0) out.existing = ws1.getRange(baris,1,1,17).getValues()[0];
+  // ws1 dibaca SEKALI (A..Q): dipakai bersama utk cek-duplikat + baris existing
+  // + shift sebelumnya (dulu 3 pembacaan terpisah). Output identik.
+  var ws1Last = ws1.getLastRow();
+  var ws1Rows = (ws1Last >= 2) ? ws1.getRange(2,1,ws1Last-1,17).getValues() : [];
+
+  // 3) laporan existing (nama+tanggal+shift) — dari data yang sudah dibaca
+  var dup = _cekDuplikatFrom_(ws1Rows, nama, tanggal, shift, tz);
+  if(dup.count > 0){
+    for(var i = 0; i < ws1Rows.length; i++){
+      if(Number(ws1Rows[i][0]) === Number(dup.nomor)){ out.existing = ws1Rows[i]; break; }
+    }
   }
 
-  // 4) data shift sebelumnya (diagnosis/alat/bed)
-  out.sebelumnya = _prevShiftData_(nama, tanggal, shift);
+  // 4) data shift sebelumnya (diagnosis/alat/bed) — dari data yang sama
+  out.sebelumnya = _prevShiftDataFrom_(ws1Rows, nama, tanggal, shift, tz);
   return JSON.stringify(out);
 }
 
@@ -1243,6 +1280,16 @@ function getTahunTersediaGoretty() {
   });
   var years = Object.keys(set).map(Number).sort(function(a, b) { return b - a; });
   return JSON.stringify(years);
+}
+
+// Init Page9 dalam SATU round-trip: daftar perawat + tahun tersedia sekaligus.
+// Menggantikan dua panggilan klien beruntun (getDaftarPerawatGoretty lalu
+// getTahunTersediaGoretty) → hemat satu latency round-trip. Output identik.
+function getInitGoretty() {
+  return JSON.stringify({
+    perawat: JSON.parse(getDaftarPerawatGoretty()),
+    tahun:   JSON.parse(getTahunTersediaGoretty())
+  });
 }
 
 function getAgregatTahunGoretty(tahun, force) {
