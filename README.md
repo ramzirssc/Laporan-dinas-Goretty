@@ -37,6 +37,8 @@ Setiap halaman di-include ke `index.html` sebagai template dan punya fungsi `ini
 
 > **Logo topbar.** Logo RS St. Carolus tampil di ujung kiri topbar, sebelum blok teks "RS St. Carolus / IPI — Goretty" (`<img class="topbar-logo">`). Sumbernya data URI WebP base64 yang di-*inline* langsung ke atribut `src` (bukan file yang diserve terpisah — HtmlService tak melayani gambar statis lewat URL). Master datanya di `assets/logo_carolus_base64.txt`; bila logo diganti, perbarui file itu lalu inline ulang ke `src`. Base64 aman di atribut `src` berkutip ganda (tak ada karakter kutip di dalamnya).
 
+> **Nav bar membungkus (responsif).** Ada 10 tombol tab, terlalu banyak untuk satu baris di banyak lebar layar. **Laptop & desktop (`@media(min-width:768px)`):** `.tabs` memakai `flex-wrap:wrap` sehingga tab **membungkus jadi 2 baris** dan semua tab selalu terlihat tanpa perlu geser — penting karena scrollbar horizontal disembunyikan (`scrollbar-width:none`), jadi di desktop bermouse tab yang tersembunyi tak terjangkau. Topbar tumbuh mengikuti isi (`height:auto;min-height:var(--topbar-h)`). **Mobile (`<=767px`):** tetap **satu baris** dengan `overflow-x:auto` (base `.tabs`) — geser sentuh sudah nyaman dan menghemat tinggi vertikal. Aturan wrap ada di `<style>` `index.html` (blok `@media(min-width:768px)`); jangan hapus `overflow-x:auto` pada base `.tabs` (dipakai mobile).
+
 ### Identitas teknis
 - **Spreadsheet utama (terikat):** `17PUDkWDfNS_FDvjZVCA9r_mdul-T8uYNSevCWxfYgpk`
 - **Spreadsheet eksternal — Permintaan Dinas (Page7):** `1i0lJ8dyeAUXvdEsPIPvMgO5cUfYF5e0LG6h7RLzpwpM`

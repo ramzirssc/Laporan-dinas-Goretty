@@ -113,6 +113,15 @@
     .check-item:has(input:checked){background:var(--blue-lt);border-color:var(--blue);color:var(--blue-dk);font-weight:600}
     .check-item:has(input:disabled){opacity:.5;cursor:default}
     .check-item input{width:13px;height:13px;accent-color:var(--blue);cursor:pointer;flex-shrink:0;margin:0}
+    /* Laptop & desktop (>=768px): nav bar membungkus jadi 2 baris agar semua tab
+       selalu terlihat tanpa perlu geser horizontal (ramah mouse; scrollbar disembunyikan).
+       Mobile (<=767px) tetap 1 baris + scroll sentuh (lihat base .tabs). */
+    @media(min-width:768px){
+      .topbar{height:auto;min-height:var(--topbar-h)}
+      .topbar-inner{height:auto;min-height:var(--topbar-h);padding-top:5px;padding-bottom:5px}
+      .tabs{flex-wrap:wrap;overflow-x:visible;height:auto;align-content:center;row-gap:4px}
+      .tab-btn{min-height:34px}
+    }
     @media(max-width:1023px){.g4{grid-template-columns:repeat(2,1fr)}.tab-btn{padding:0 10px;font-size:12px}}
     @media(max-width:767px){
       .page-content{padding:10px 10px 40px}.logo-text .unit{display:none}
