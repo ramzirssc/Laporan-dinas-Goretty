@@ -29,9 +29,9 @@ Tujuan utama: pencatatan untuk **audit, surveilans, penelitian, dan statistik** 
 | `page8.html` | Statistik (diagnosis/alat dari ws1; metrik pasien dari sheet Merge) |
 | `page9.html` | **Logbook Perawat Goretty** (baca spreadsheet eksternal, read-only) |
 
-> Tidak ada `page6.html`. Urutan tab: p1, p2, p3, p4, p5, p7, p8, p9, lalu **tab eksternal "🗓️ Jadwal jaga Anestesi"** (lihat catatan di bawah).
+> Tidak ada `page6.html`. Urutan tab: p1, p2, p3, p4, p5, p7, p8, p9 (label tab p9 = "📒 Logbook"), lalu **dua tab eksternal "📅 Jadwal Dinas"** dan **"🗓️ Jadwal jaga Anestesi"** (lihat catatan di bawah).
 
-> **Tab "Jadwal jaga Anestesi"** (paling kanan) BUKAN halaman SPA. Ia hanya tombol `.tab-btn` di `index.html` yang menjalankan `window.open('<url web app eksternal>','_blank')` — membuka web app Apps Script eksternal (jadwal jaga anestesi) di tab browser baru, tidak mengubah `page-section` aktif. **Wajib diletakkan sebagai tombol terakhir**: router `gotoPage` memetakan tombol ke halaman lewat indeks (`PAGE_IDS[i]`), jadi tombol non-halaman harus di akhir agar indeks tombol lain tetap benar; tombol ini memetakan ke `PAGE_IDS[8]` (undefined) sehingga tak pernah jadi "active". Jangan tambahkan ke `PAGE_IDS`/`loaded`/`gotoPage`.
+> **Tab eksternal "📅 Jadwal Dinas" dan "🗓️ Jadwal jaga Anestesi"** (dua tombol paling kanan) BUKAN halaman SPA. Masing-masing hanya tombol `.tab-btn` di `index.html` yang menjalankan `window.open('<url web app eksternal>','_blank')` — membuka web app Apps Script eksternal di tab browser baru, tidak mengubah `page-section` aktif. **Wajib diletakkan sebagai tombol-tombol terakhir**: router `gotoPage` memetakan tombol ke halaman lewat indeks (`PAGE_IDS[i]`), jadi tombol non-halaman harus di akhir agar indeks tombol lain tetap benar; keduanya memetakan ke `PAGE_IDS[8]`/`PAGE_IDS[9]` (undefined) sehingga tak pernah jadi "active". Jangan tambahkan ke `PAGE_IDS`/`loaded`/`gotoPage`.
 
 Setiap halaman di-include ke `index.html` sebagai template dan punya fungsi `initPN(params)` yang dipanggil router (`gotoPage`) saat halaman dibuka.
 
