@@ -1,0 +1,54 @@
+<!-- PAGE 11: JADWAL JAGA ANESTESI (embed/iframe web app eksternal, read-only) -->
+<style>
+  .p11-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--radius-lg);
+    padding:10px 16px;margin-bottom:10px;box-shadow:var(--shadow)}
+  .p11-ttl{font-family:var(--serif);font-size:16px;font-weight:600;font-style:italic;color:var(--blue-dk)}
+  .p11-note{font-size:11px;color:var(--muted);font-style:italic}
+  .p11-open{margin-left:auto;display:inline-flex;align-items:center;gap:6px;
+    height:34px;padding:0 12px;font-size:12px;font-weight:600;text-decoration:none;
+    border:1px solid var(--border);border-radius:var(--radius-sm);
+    background:var(--surface2);color:var(--blue-dk);cursor:pointer;white-space:nowrap}
+  .p11-open:hover{background:var(--blue-lt)}
+  .p11-frame-wrap{position:relative;border:1px solid var(--border-soft);border-radius:var(--radius);
+    overflow:hidden;background:var(--surface)}
+  #p11-frame{display:block;width:100%;border:0}
+  .p11-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    color:var(--muted);font-style:italic;font-size:13px;pointer-events:none}
+</style>
+
+<div class="p11-bar">
+  <span class="p11-ttl">🗓️ Jadwal Jaga Anestesi</span>
+  <span class="p11-note">Ditampilkan langsung dari web app Jadwal Jaga Anestesi (read-only).</span>
+  <a class="p11-open" id="p11-open" href="#" target="_blank" rel="noopener">↗ Buka di tab baru</a>
+</div>
+<div class="p11-frame-wrap">
+  <div class="p11-loading" id="p11-loading">Memuat Jadwal Jaga Anestesi…</div>
+  <iframe id="p11-frame" title="Jadwal Jaga Anestesi"></iframe>
+</div>
+
+<script>
+var P11_URL = 'https://script.google.com/macros/s/AKfycbzrD9WiIfvZKscjfK0MeP0NiKJiD0y1emIbcCoNYm6i3zDCPsCGg1u4pD1hJJnRu0EX0Q/exec';
+var p11Ready = false;
+
+function p11Resize(){
+  var f = document.getElementById('p11-frame'); if(!f) return;
+  var top = f.getBoundingClientRect().top;                 // jarak dari atas viewport
+  var h = Math.max(480, Math.floor(window.innerHeight - top - 24));
+  f.style.height = h + 'px';
+  var wrap = f.parentElement; if(wrap) wrap.style.height = h + 'px';
+}
+
+function initP11(){
+  var open = document.getElementById('p11-open');
+  if(open) open.href = P11_URL;
+  if(!p11Ready){
+    var f = document.getElementById('p11-frame');
+    f.addEventListener('load', function(){ var l=document.getElementById('p11-loading'); if(l) l.style.display='none'; });
+    f.src = P11_URL;                                        // lazy-load hanya saat tab dibuka
+    window.addEventListener('resize', p11Resize);
+    p11Ready = true;
+  }
+  p11Resize();
+}
+</script>

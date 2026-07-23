@@ -151,8 +151,8 @@
       <button class="tab-btn"        onclick="gotoPage('p7')">📄 Permintaan Dinas</button>
       <button class="tab-btn"        onclick="gotoPage('p8')">📊 Statistik</button>
       <button class="tab-btn"        onclick="gotoPage('p9')">📒 Logbook</button>
-      <button class="tab-btn"        onclick="window.open('https://script.google.com/macros/s/AKfycbyia5srJF2bU_ilLuGuoVgLOG1a4cew6BR_54El4ehZ0Pmly-kImnrUkxK72B-WmQrGfQ/exec','_blank')">📅 Jadwal Dinas</button>
-      <button class="tab-btn"        onclick="window.open('https://script.google.com/macros/s/AKfycbzrD9WiIfvZKscjfK0MeP0NiKJiD0y1emIbcCoNYm6i3zDCPsCGg1u4pD1hJJnRu0EX0Q/exec','_blank')">🗓️ Jadwal jaga Anestesi</button>
+      <button class="tab-btn"        onclick="gotoPage('p10')">📅 Jadwal Dinas</button>
+      <button class="tab-btn"        onclick="gotoPage('p11')">🗓️ Jadwal jaga Anestesi</button>
     </div>
     <div class="divider-v"></div>
     <div class="topbar-info">
@@ -171,11 +171,13 @@
   <div id="p7" class="page-section">      <?!= include('page7') ?></div>
   <div id="p8" class="page-section">      <?!= include('page8') ?></div>
   <div id="p9" class="page-section">      <?!= include('page9') ?></div>
+  <div id="p10" class="page-section">     <?!= include('page10') ?></div>
+  <div id="p11" class="page-section">     <?!= include('page11') ?></div>
 </div>
 
 <script>
-var loaded={p1:false,p2:false,p3:false,p4:false,p5:false,p7:false,p8:false,p9:false};
-var PAGE_IDS=['p1','p2','p3','p4','p5','p7','p8','p9'];
+var loaded={p1:false,p2:false,p3:false,p4:false,p5:false,p7:false,p8:false,p9:false,p10:false,p11:false};
+var PAGE_IDS=['p1','p2','p3','p4','p5','p7','p8','p9','p10','p11'];
 
 function gotoPage(id,params){
   document.querySelectorAll('.page-section').forEach(function(s){s.classList.remove('active');});
@@ -193,6 +195,8 @@ function gotoPage(id,params){
   if(id==='p7'&&!loaded.p7){initP7();loaded.p7=true;}
   if(id==='p8'&&!loaded.p8){initP8();loaded.p8=true;}
   if(id==='p9'&&!loaded.p9){initP9();loaded.p9=true;}
+  if(id==='p10'&&!loaded.p10){initP10();loaded.p10=true;}
+  if(id==='p11'){initP11();loaded.p11=true;}
 }
 
 function loading(v){document.getElementById('overlay').classList.toggle('show',v);}
