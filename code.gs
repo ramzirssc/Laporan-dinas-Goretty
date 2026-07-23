@@ -1431,3 +1431,129 @@ function lbGDebugPerawat(npk, tahun) {
   });
   return JSON.stringify(out);
 }
+
+// ═══════════════════════════════════════════════════════
+//  PAGE 7 — FORM PERMINTAAN DINAS (ajukan + batalkan)
+//  Menulis ke spreadsheet "Daftar Dinas IPI" -> sheet Form responses 1 (A:G).
+//  G kosong = menunggu. Batalkan -> G = BATAL. Nama diambil dari LookUp.
+// ═══════════════════════════════════════════════════════
+var PD_SS_ID = '1i0lJ8dyeAUXvdEsPIPvMgO5cUfYF5e0LG6h7RLzpwpM';
+var PD_FORM_GID = 1378939414;
+
+function _pdFormSheet_() {
+  var ss = SpreadsheetApp.openById(PD_SS_ID);
+  var sh = ss.getSheets().find(function(s){ return s.getSheetId()==PD_FORM_GID; });
+  if(!sh) sh = ss.getSheetByName('Form responses 1') || ss.getSheetByName('Form Responses 1');
+  if(!sh) throw new Error('Sheet Form responses 1 tidak ditemukan.');
+  return sh;
+}
+function _pdNameKey_(v){ return String(v==null?'':v).toUpperCase().replace(/[^A-Z0-9]/g,''); }
+function _pdParseDate_(s){
+  if(s instanceof Date) return isNaN(s.getTime())?null:s;
+  s = String(s||'').trim(); if(!s) return null;
+  var m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if(m) return new Date(+m[1], +m[2]-1, +m[3], 12,0,0);
+  var d = new Date(s); return isNaN(d.getTime())?null:d;
+}
+function _pdBustCache_(){
+  try{
+    var tz = Session.getScriptTimeZone();
+    var today = Utilities.formatDate(new Date(),tz,'yyyy-MM-dd');
+    var sixM = new Date(); sixM.setMonth(sixM.getMonth()+6);
+    var ta = Utilities.formatDate(sixM,tz,'yyyy-MM-dd');
+    CacheService.getScriptCache().remove('dinas_g_'+today+'-'+ta);
+  }catch(e){}
+}
+
+/* Daftar nama staf aktif (dari LookUp Daftar Dinas) untuk dropdown. -> JSON array */
+function getStafPermintaan(){
+  var cache = CacheService.getScriptCache();
+  var c = cache.get('pd_staf'); if(c) return c;
+  var out = [];
+  try {
+    var sh = SpreadsheetApp.openById(PD_SS_ID).getSheetByName('LookUp');
+    if(sh){
+      var last = sh.getLastRow();
+      if(last>=2){
+        var vals = sh.getRange(2,3,last-1,9).getValues(); // C..K (Nama..Aktif)
+        for(var i=0;i<vals.length;i++){
+          var nama = String(vals[i][0]||'').trim();               // C = Nama
+          var aktif = vals[i][8];                                  // K = Aktif
+          var isAktif = aktif===true || String(aktif).toUpperCase()==='TRUE' || String(aktif).toUpperCase()==='YA';
+          if(nama && isAktif) out.push(nama);
+        }
+      }
+    }
+  } catch(e){}
+  out.sort(function(a,b){ return a.localeCompare(b); });
+  var res = JSON.stringify(out);
+  try{ cache.put('pd_staf', res, 300); }catch(e){}
+  return res;
+}
+
+/* Kirim permintaan -> tambah baris A:G. data={nama,jenis,mulai,selesai,alasan} -> JSON {ok,error} */
+function submitPermintaan(data){
+  data = data||{};
+  var nama = String(data.nama||'').trim();
+  var jenis = String(data.jenis||'').trim();
+  var alasan = String(data.alasan||'').trim();
+  var mulai = _pdParseDate_(data.mulai);
+  var selesai = _pdParseDate_(data.selesai);
+  if(!nama)  return JSON.stringify({ok:false, error:'Nama wajib dipilih.'});
+  if(!jenis) return JSON.stringify({ok:false, error:'Jenis permintaan wajib dipilih.'});
+  if(!mulai) return JSON.stringify({ok:false, error:'Tanggal mulai wajib diisi.'});
+  if(!selesai) selesai = mulai;
+  if(selesai.getTime() < mulai.getTime()) selesai = mulai;
+  var lock = LockService.getScriptLock(); lock.waitLock(30000);
+  try{
+    var sh = _pdFormSheet_();
+    var row = sh.getLastRow()+1;
+    sh.getRange(row,1,1,7).setValues([[new Date(), nama, jenis, mulai, selesai, alasan, '']]);
+    sh.getRange(row,1).setNumberFormat('M/d/yyyy H:mm:ss');
+    sh.getRange(row,4,1,2).setNumberFormat('M/d/yyyy');
+    SpreadsheetApp.flush();
+    _pdBustCache_();
+    return JSON.stringify({ok:true});
+  } catch(e){ return JSON.stringify({ok:false, error:e.message}); }
+  finally{ lock.releaseLock(); }
+}
+
+/* Permintaan seorang staf yang akan datang (mulai >= hari ini) -> JSON {rows} */
+function listPermintaanByName(nama){
+  var key = _pdNameKey_(nama);
+  if(!key) return JSON.stringify({rows:[]});
+  var sh = _pdFormSheet_();
+  var last = sh.getLastRow();
+  if(last<2) return JSON.stringify({rows:[]});
+  var tz = Session.getScriptTimeZone();
+  var vals = sh.getRange(2,1,last-1,7).getValues();
+  var today = Utilities.formatDate(new Date(),tz,'yyyy-MM-dd');
+  function ymd(v){ if(v instanceof Date){try{return Utilities.formatDate(v,tz,'yyyy-MM-dd');}catch(e){return'';}} return String(v||'').substring(0,10); }
+  function fmt(v){ if(v instanceof Date){try{return Utilities.formatDate(v,tz,'dd/MM/yyyy');}catch(e){return'';}} return String(v||''); }
+  var out = [];
+  for(var i=0;i<vals.length;i++){
+    var r = vals[i];
+    if(_pdNameKey_(r[1])!==key) continue;
+    var dm = ymd(r[3]); if(!dm || dm<today) continue;
+    out.push({row:2+i, jenis:String(r[2]||''), mulai:fmt(r[3]), selesai:fmt(r[4]), mulaiRaw:dm, jawaban:String(r[6]||'')});
+  }
+  out.sort(function(a,b){ return a.mulaiRaw<b.mulaiRaw?-1:(a.mulaiRaw>b.mulaiRaw?1:0); });
+  return JSON.stringify({rows:out});
+}
+
+/* Batalkan: set G=BATAL, guard nama cocok. -> JSON {ok,error} */
+function cancelPermintaan(row, nama){
+  row = Number(row);
+  if(!row || row<2) return JSON.stringify({ok:false, error:'Baris tidak valid.'});
+  var lock = LockService.getScriptLock(); lock.waitLock(30000);
+  try{
+    var sh = _pdFormSheet_();
+    var rowNama = String(sh.getRange(row,2).getValue()||'');
+    if(_pdNameKey_(rowNama)!==_pdNameKey_(nama)) return JSON.stringify({ok:false, error:'Nama tidak cocok dengan permintaan ini.'});
+    sh.getRange(row,7).setValue('BATAL');
+    SpreadsheetApp.flush();
+    _pdBustCache_();
+    return JSON.stringify({ok:true});
+  } catch(e){ return JSON.stringify({ok:false, error:e.message}); }
+  finally{ lock.releaseLock(); }
+}

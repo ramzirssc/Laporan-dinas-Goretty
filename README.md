@@ -25,7 +25,7 @@ Tujuan utama: pencatatan untuk **audit, surveilans, penelitian, dan statistik** 
 | `page3.html` | Lihat laporan (tabel, filter, edit inline diagnosis+laporan, tombol Refresh & Cetak PDF) |
 | `page4.html` | Operan dinas (kartu per pasien; cari seluruh riwayat; tombol Refresh) |
 | `page5.html` | Tulis/lihat/edit laporan (form utama). Pencarian berbasis **tanggal + nama + shift**. |
-| `page7.html` | Permintaan dinas (baca spreadsheet eksternal Form responses) |
+| `page7.html` | Permintaan dinas: form **Ajukan + Batalkan** (native) + tabel jawaban read-only; **baca & tulis** spreadsheet eksternal Form responses |
 | `page8.html` | Statistik (diagnosis/alat dari ws1; metrik pasien dari sheet Merge) |
 | `page9.html` | **Logbook Perawat Goretty** (baca spreadsheet eksternal, read-only) |
 
@@ -347,7 +347,7 @@ Target hardcode: `{ I:80, II:80, III:75, IV:80, V:43 }`. PK number: `{ I:1..V:5 
 - **Page1** — daftar pasien hari ini (`getDataPage1`, cache `p1_data` 60 detik). `sudahAda` memetakan `(nama|shift)`→nomor laporan untuk **hari operasional** (lihat di bawah). `shiftBuka` menandai shift yang jam dinasnya belum dimulai → tombol shift kosong dirender **nonaktif** (`.bs-off`); badge bernomor tetap bisa diklik. Klik shift kosong (aktif) → `tulisLaporan()` membuka **tab baru** ke `?p=5&nw=1&nm=&sh=&tg=` (fallback `gotoPage` mode baru). `invalidateP1Cache()` untuk Refresh.
 - **Page3** — `getLaporan(filter)` (default 3 hari terakhir); `getNamaPasienDalamRentang(tm,ta)`; edit inline via `updateLaporan` (§8); Refresh & Cetak PDF.
 - **Page4** — `getDataPage4`, `getAllLaporanPasien`, `cariSemuaNamaPasien`; tombol Refresh muat ulang tampilan aktif. Payload "pasien hari ini" (semua pasien, 6 laporan/pasien) di-**cache klien** (`p4dHariData`): ganti pilihan nama di dropdown me-render dari cache **tanpa server call**. Jalur keluar-mode-search & Refresh tetap fetch.
-- **Page7** — `getDaftarDinas(tm,ta)` dari spreadsheet eksternal; filter unit kolom I mengandung "G".
+- **Page7** — tabel: `getDaftarDinas(tm,ta)` dari spreadsheet eksternal (filter unit kolom I mengandung "G"); form: `getStafPermintaan()` (dropdown nama, dari LookUp), `submitPermintaan(data)` (append A:G), `listPermintaanByName(nama)` + `cancelPermintaan(row,nama)` (batalkan → G=BATAL). Helper: `_pdFormSheet_`, `_pdParseDate_`, `_pdNameKey_`, `_pdBustCache_`.
 
 ### Hari operasional (pergantian pukul 07:00) — Page1 **dan** Page5
 
@@ -384,6 +384,6 @@ Target hardcode: `{ I:80, II:80, III:75, IV:80, V:43 }`. PK number: `{ I:1..V:5 
 4. **Nomor hanya dari `baristerakhir()` (max kolom A).** Tidak pernah dari posisi baris / `getLastRow()-1`.
 5. **Penyimpanan via LockService + cek duplikat server + nomor server** (§5).
 6. **Operasi per-nomor lewat `_cariRowByNomor_`** (posisi baris ≠ nomor).
-7. **Spreadsheet eksternal (Page7, Page9) READ-ONLY.** Tidak ada `setValue`/`appendRow`/`insertSheet` di sana.
+7. **Page9 READ-ONLY penuh.** Page7 kini **menulis** ke `Form responses 1` Daftar Dinas: `submitPermintaan` (append baris A:G, staf mengajukan) & `cancelPermintaan` (set G=BATAL, staf membatalkan) — tetap tanpa `insertSheet`/hapus baris. Kolom I (unit) terisi otomatis oleh formula sheet. Page9 tetap read-only penuh.
 8. **Minimalkan server call.** Page5 memakai `getPaketLaporan` (1 call/aksi); Page9 1 call/tahun + cache klien.
 9. **Hemat kode top-level.** Statement top-level `code.gs` jalan di **setiap** server call, jadi: `getSheets()` dienumerasi sekali (`_allSheets_`), dan opsi dropdown adalah **fungsi lazy** (`opsiperawat()/opsipasien()/opsitempat()/htmlCheckbox()`) yang hanya dieksekusi saat template `doGet` membutuhkannya (`<?!= opsiperawat() ?>`), bukan precompute `const`.
