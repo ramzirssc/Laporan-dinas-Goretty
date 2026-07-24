@@ -1,250 +1,41 @@
-<!-- PAGE 10: JADWAL DINAS (matriks, READ-ONLY) — port dari web app "Daftar Dinas" Tab 1 -->
+<!-- PAGE 10: JADWAL DINAS (iframe read-only aplikasi eksternal) -->
+<!-- Aplikasi eksternal di-deploy ALLOWALL + akses "Anyone" → boleh di-embed.
+     Iframe di-set lazy (src baru diisi saat tab pertama kali dibuka) supaya
+     tak membebani load awal SPA. Read-only: hanya lihat/scroll; halaman
+     default aplikasi sumber hanya menampilkan jadwal (form ajukan terpisah). -->
 <style>
-  :root{ --p10-hdr:#26496b; }
-  .p10-bar{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;
-    background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--radius-lg);
-    padding:12px 18px;margin-bottom:12px;box-shadow:var(--shadow)}
-  .p10-bar .p10-ttl{font-family:var(--serif);font-size:17px;font-weight:600;font-style:italic;
-    color:var(--blue-dk);align-self:center;margin-right:6px}
-  .p10-f{display:flex;flex-direction:column;gap:3px}
-  .p10-f label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
-  .p10-f select,.p10-f input{height:36px;min-height:36px;padding:0 8px;font-size:12.5px;
-    border:1px solid var(--border);border-radius:var(--radius-sm);
-    background:var(--field-active-bg);color:var(--field-active-text);
-    -webkit-appearance:none;appearance:none}
-  .p10-f select:focus,.p10-f input:focus{outline:none;border-color:var(--blue-focus);box-shadow:0 0 0 3px var(--blue-lt)}
-  .p10-nav{display:flex;align-items:center;gap:6px;align-self:center}
-  .p10-nav button{height:34px;min-width:34px;border:1px solid var(--border);border-radius:var(--radius-sm);
-    background:var(--surface2);color:var(--blue-dk);font-size:14px;cursor:pointer}
-  .p10-nav button:hover{background:var(--blue-lt)}
-  .p10-range{font-size:12px;color:var(--muted);font-style:italic;min-width:170px;text-align:center}
-  .p10-hint{font-size:11px;color:var(--muted);font-style:italic;margin-bottom:6px}
-
-  .p10-wrap{max-height:72vh;overflow:auto;border:1px solid var(--border-soft);border-radius:var(--radius);background:var(--surface)}
-  table.p10-sched{border-collapse:separate;border-spacing:0;white-space:nowrap;margin:0}
-  table.p10-sched th,table.p10-sched td{border-right:1px solid #eceef1;border-bottom:1px solid #eceef1;padding:3px 6px;font-size:12.5px;text-align:center}
-  table.p10-sched thead th{position:sticky;top:0;z-index:3;background:var(--p10-hdr);color:#fff;font-weight:600}
-  table.p10-sched thead th.p10-hdr-sun{background:#dc3545 !important}
-  table.p10-sched thead th.p10-hdr-holiday{background:#1e7e34 !important}
-  .p10-col-today{box-shadow:inset 2px 0 0 var(--p10-hdr), inset -2px 0 0 var(--p10-hdr)}
-  thead th.p10-col-today{box-shadow:inset 2px 0 0 var(--p10-hdr), inset -2px 0 0 var(--p10-hdr), inset 0 2px 0 var(--p10-hdr)}
-  tfoot td.p10-col-today-bottom{box-shadow:inset 2px 0 0 var(--p10-hdr), inset -2px 0 0 var(--p10-hdr), inset 0 -2px 0 var(--p10-hdr)}
-  table.p10-sched td.p10-npk,table.p10-sched td.p10-nama,table.p10-sched th.p10-npk,table.p10-sched th.p10-nama{position:sticky;z-index:2;background:var(--surface);text-align:left;font-weight:500}
-  table.p10-sched th.p10-npk,table.p10-sched th.p10-nama{z-index:4;background:var(--p10-hdr);color:#fff}
-  table.p10-sched td.p10-npk,table.p10-sched th.p10-npk{left:0;min-width:70px}
-  table.p10-sched td.p10-nama,table.p10-sched th.p10-nama{left:70px;min-width:190px;box-shadow:2px 0 0 var(--border-soft)}
-  table.p10-sched tbody tr:nth-child(even) td{background:var(--surface2)}
-  table.p10-sched tbody tr:nth-child(even) td.p10-npk,table.p10-sched tbody tr:nth-child(even) td.p10-nama{background:var(--surface2)}
-  .p10-bg-pagi{background:#e6f4ea !important}
-  .p10-bg-siang{background:#fdf4dc !important}
-  .p10-bg-malam{background:#eaeffb !important}
-  .p10-txt-red{color:#dc3545 !important;font-weight:600}
-  table.p10-sched tfoot td{position:sticky;bottom:0;font-weight:600;z-index:2;border-top:2px solid #adb5bd;text-align:center}
-  table.p10-sched tfoot td.p10-lbl{z-index:4;text-align:left}
-  /* crosshair hover: sorot baris & kolom */
-  table.p10-sched td.p10-cx-col,table.p10-sched th.p10-cx-col,table.p10-sched td.p10-cx-row,table.p10-sched th.p10-cx-row{box-shadow:inset 0 0 0 9999px rgba(255,193,7,.30) !important}
-  table.p10-sched td.p10-cx-cell{outline:2px solid #fd7e14;outline-offset:-2px}
-  .p10-empty{padding:16px;color:var(--muted);font-style:italic}
-  @media(max-width:767px){ .p10-bar{padding:10px 14px}.p10-bar .p10-ttl{font-size:15px} }
+  .p10-wrap{display:flex;flex-direction:column;
+    height:calc(100vh - var(--topbar-h) - 28px)}
+  .p10-bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;
+    padding:6px 10px;background:#eef3f8;border:1px solid #d7e0ea;
+    border-bottom:none;border-radius:var(--radius-sm) var(--radius-sm) 0 0;
+    font-size:12px;color:var(--muted)}
+  .p10-bar .lbl{font-weight:700;color:var(--blue-dk)}
+  .p10-bar a{color:#1e3f62;font-weight:700;text-decoration:none}
+  .p10-bar a:hover{text-decoration:underline}
+  .p10-frame{flex:1;width:100%;border:1px solid #d7e0ea;
+    border-radius:0 0 var(--radius-sm) var(--radius-sm);background:#fff}
 </style>
 
-<div class="p10-bar">
-  <span class="p10-ttl">📅 Jadwal Dinas IPI</span>
-  <div class="p10-f"><label>Tahun</label><select id="p10-year" style="width:110px"></select></div>
-  <div class="p10-nav">
-    <button id="p10-prev" title="Mundur 7 hari">◀</button>
-    <span class="p10-range" id="p10-range"></span>
-    <button id="p10-next" title="Maju 7 hari">▶</button>
+<div class="p10-wrap">
+  <div class="p10-bar">
+    <span class="lbl">🗓️ Jadwal Dinas</span>
+    <span>tampilan baca saja</span>
+    <span style="margin-left:auto">Tidak muncul?
+      <a id="p10-open-link"
+         href="https://script.google.com/macros/s/AKfycbyia5srJF2bU_ilLuGuoVgLOG1a4cew6BR_54El4ehZ0Pmly-kImnrUkxK72B-WmQrGfQ/exec"
+         target="_blank" rel="noopener">buka di tab baru ↗</a></span>
   </div>
-  <div class="p10-f"><label>Filter Nama</label><input id="p10-filter" type="text" style="width:200px" placeholder="Ketik nama staf…" autocomplete="off"></div>
+  <iframe class="p10-frame" id="p10-frame"
+          title="Jadwal Dinas" referrerpolicy="no-referrer"></iframe>
 </div>
-<div class="p10-hint">Menampilkan 7 hari sebelum &amp; sesudah hari ini. Tabel bersifat lihat-saja (read-only). Sumber: spreadsheet <b>Daftar Dinas IPI</b>.</div>
-<div class="p10-wrap"><div id="p10-table" class="p10-empty">Memuat…</div></div>
 
 <script>
-// ---- state ----
-var P10 = { years:[], today:'', currentYear:'', staff:[], codeList:[], workplazeMap:{}, jamMap:{}, holidays:{},
-            cache:{}, focus:'', filter:'', ready:false, wired:false };
+var P10_URL='https://script.google.com/macros/s/AKfycbyia5srJF2bU_ilLuGuoVgLOG1a4cew6BR_54El4ehZ0Pmly-kImnrUkxK72B-WmQrGfQ/exec';
 
-// ---- server call (JSON string -> object) ----
-function p10Gs(fn){
-  var args = Array.prototype.slice.call(arguments,1);
-  return new Promise(function(res,rej){
-    google.script.run.withSuccessHandler(function(r){
-      try{ res(typeof r==='string'?JSON.parse(r):r); }catch(e){ rej(e); }
-    }).withFailureHandler(rej)[fn].apply(null,args);
-  });
-}
-
-// ---- date helpers ----
-var P10_MMM=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-function p10Pad2(n){ return (n<10?'0':'')+n; }
-function p10IsoToDate(iso){ var p=String(iso).split('-'); return new Date(+p[0],+p[1]-1,+p[2],12,0,0); }
-function p10DateToIso(d){ return d.getFullYear()+'-'+p10Pad2(d.getMonth()+1)+'-'+p10Pad2(d.getDate()); }
-function p10FmtDisp(iso){ var d=p10IsoToDate(iso); return d.getDate()+'-'+P10_MMM[d.getMonth()]+'-'+d.getFullYear(); }
-function p10IsoAddDays(iso,n){ var d=p10IsoToDate(iso); return p10DateToIso(new Date(d.getFullYear(),d.getMonth(),d.getDate()+n,12,0,0)); }
-function p10IsoDow(iso){ return p10IsoToDate(iso).getDay(); }
-function p10IsHoliday(iso){ return !!P10.holidays[iso]; }
-function p10HdrDateClass(iso){ if(p10IsHoliday(iso)) return 'p10-hdr-holiday'; if(p10IsoDow(iso)===0) return 'p10-hdr-sun'; return ''; }
-function p10YearOf(key){ return String(key).slice(0,4); }
-
-// ---- shift classification (prioritas Pagi > Siang > Malam) ----
-var P10_SHIFT_TOKENS={ pagi:['DRP','DRL','DHL','1','2','8','P'], siang:['DHK','DHL','3','5','6'], malam:['DHK','DHL','4','7','9'] };
-function p10ShiftOf(code){
-  var c=String(code||'').toUpperCase(); if(!c) return '';
-  var order=['pagi','siang','malam'];
-  for(var i=0;i<order.length;i++){ var toks=P10_SHIFT_TOKENS[order[i]];
-    for(var j=0;j<toks.length;j++){ if(c.indexOf(toks[j])!==-1) return order[i]; } }
-  return '';
-}
-function p10CodeClass(code){
-  var cls='p10-code-cell', sh=p10ShiftOf(code);
-  if(sh==='pagi') cls+=' p10-bg-pagi'; else if(sh==='siang') cls+=' p10-bg-siang'; else if(sh==='malam') cls+=' p10-bg-malam';
-  var c=String(code||'').toUpperCase();
-  if(c && (c.charAt(0)==='C' || c.charAt(0)==='L')) cls+=' p10-txt-red';
-  return cls;
-}
-
-// ---- cache & bundle ----
-function p10IdxRows(rows){ var m={}; rows.forEach(function(r,i){ m[r.npk]=i; }); return m; }
-function p10KeyIdx(h){ var m={}; h.forEach(function(x,i){ m[x.key]=i; }); return m; }
-function p10ApplyBundle(b){
-  P10.years=b.years; P10.today=b.today; P10.staff=b.staff||[];
-  P10.codeList=b.codeList||[]; P10.workplazeMap=b.workplazeMap||{};
-  if(b.jamMap) P10.jamMap=b.jamMap;
-  P10.holidays={}; (b.holidays||[]).forEach(function(k){ P10.holidays[k]=1; });
-  P10.cache[b.tahun]={ headers:b.headers, rows:b.rows, rowByNpk:p10IdxRows(b.rows), keyIndex:p10KeyIdx(b.headers) };
-  return b.tahun;
-}
-function p10ApplyYear(y){
-  P10.cache[y.tahun]={ headers:y.headers, rows:y.rows, rowByNpk:p10IdxRows(y.rows), keyIndex:p10KeyIdx(y.headers) };
-  return y.tahun;
-}
-// muat aman semua tahun yg dibutuhkan window; tahun tak bersheet -> ditandai null
-function p10EnsureYearSafe(y){
-  y=String(y);
-  if(P10.cache[y]!==undefined) return Promise.resolve();
-  return p10Gs('jdGetYear', y).then(function(d){ if(d&&d.ok!==false) p10ApplyYear(d); else P10.cache[y]=null; }, function(){ P10.cache[y]=null; });
-}
-function p10WinDates(){ var a=[]; for(var i=-7;i<=7;i++) a.push(p10IsoAddDays(P10.focus,i)); return a; }
-function p10YearAvail(y){ var c=P10.cache[y]; return c && c.rows; }
-function p10PrimaryYear(){
-  var y=p10YearOf(P10.focus); if(p10YearAvail(y)) return y;
-  var dates=p10WinDates();
-  for(var i=0;i<dates.length;i++){ var yy=p10YearOf(dates[i]); if(p10YearAvail(yy)) return yy; }
-  return y;
-}
-function p10EnsureWindow(){
-  var yrs={}; p10WinDates().forEach(function(d){ yrs[p10YearOf(d)]=1; });
-  var need=Object.keys(yrs).filter(function(y){ return P10.cache[y]===undefined; });
-  if(!need.length) return Promise.resolve();
-  loading(true);
-  return Promise.all(need.map(p10EnsureYearSafe)).then(function(){ loading(false); }, function(){ loading(false); });
-}
-function p10Cur(npk,key){
-  var cache=P10.cache[p10YearOf(key)]; if(!cache || !cache.rows) return '';
-  var ri=cache.rowByNpk[npk], idx=cache.keyIndex[key]; var r=cache.rows[ri];
-  return r?(r.codes[idx]||''):'';
-}
-
-// ---- render ----
-function p10FillYears(){
-  var sel=document.getElementById('p10-year');
-  sel.innerHTML=P10.years.map(function(y){ return '<option '+(y===P10.currentYear?'selected':'')+'>'+y+'</option>'; }).join('');
-  sel.value=P10.currentYear;
-}
-function p10Render(){
-  var box=document.getElementById('p10-table');
-  var dates=p10WinDates();
-  var py=p10PrimaryYear(), pcache=P10.cache[py];
-  var rangeEl=document.getElementById('p10-range');
-  if(!pcache || !pcache.rows || !pcache.rows.length){ box.innerHTML='<div class="p10-empty">Tidak ada data pada rentang ini.</div>'; rangeEl.textContent=''; return; }
-  rangeEl.textContent = p10FmtDisp(dates[0])+' — '+p10FmtDisp(dates[dates.length-1]);
-  var ysel=document.getElementById('p10-year');
-  if([].some.call(ysel.options, function(o){ return o.value===py; })) ysel.value=py;
-  var q=(P10.filter||'').trim().toLowerCase();
-  var rows=q ? pcache.rows.filter(function(r){ return String(r.nama||'').toLowerCase().indexOf(q)>=0; }) : pcache.rows;
-  var h='<table class="p10-sched"><thead><tr><th class="p10-npk">NPK</th><th class="p10-nama">Nama</th>';
-  dates.forEach(function(k){
-    var hc=p10HdrDateClass(k)+(k===P10.today?' p10-col-today':'');
-    h+='<th class="'+hc.trim()+'">'+esc(p10FmtDisp(k))+'</th>';
-  });
-  h+='</tr></thead><tbody>';
-  if(!rows.length){ h+='<tr><td colspan="'+(dates.length+2)+'" style="text-align:left;padding:8px">Tidak ada staf yang cocok dengan filter.</td></tr>'; }
-  rows.forEach(function(r){
-    h+='<tr><td class="p10-npk">'+esc(r.npk)+'</td><td class="p10-nama">'+esc(r.nama)+'</td>';
-    dates.forEach(function(k){
-      var v=p10Cur(r.npk,k);
-      var cls=p10CodeClass(v)+(k===P10.today?' p10-col-today':'');
-      h+='<td class="'+cls+'">'+esc(v)+'</td>';
-    });
-    h+='</tr>';
-  });
-  h+='</tbody>'+p10Footer(dates, pcache.rows)+'</table>';
-  box.innerHTML=h;
-  p10StickFooter();
-}
-function p10Footer(dates, rows){
-  var sums={pagi:[],siang:[],malam:[]};
-  dates.forEach(function(k,ci){ sums.pagi[ci]=0; sums.siang[ci]=0; sums.malam[ci]=0; });
-  rows.forEach(function(r){ dates.forEach(function(k,ci){ var sh=p10ShiftOf(p10Cur(r.npk,k)); if(sh) sums[sh][ci]++; }); });
-  function row(lbl,arr,cls,isLast){
-    var s='<tr><td class="p10-lbl '+cls+'" style="left:0;min-width:70px"></td><td class="p10-lbl '+cls+'" style="left:70px;min-width:190px">'+lbl+'</td>';
-    arr.forEach(function(n,ci){ var td=cls+(dates[ci]===P10.today?(isLast?' p10-col-today-bottom':' p10-col-today'):''); s+='<td class="'+td+'">'+(n||'')+'</td>'; });
-    return s+'</tr>';
-  }
-  return '<tfoot>'+row('Pagi',sums.pagi,'p10-bg-pagi',false)+row('Siang',sums.siang,'p10-bg-siang',false)+row('Malam',sums.malam,'p10-bg-malam',true)+'</tfoot>';
-}
-// stack sticky footer supaya tidak saling menumpuk & selalu tampil
-function p10StickFooter(){
-  var tbl=document.querySelector('#p10-table table.p10-sched'); if(!tbl) return;
-  var rows=tbl.querySelectorAll('tfoot tr'); var below=0;
-  for(var i=rows.length-1;i>=0;i--){
-    var cells=rows[i].children;
-    for(var c=0;c<cells.length;c++){ cells[c].style.bottom=below+'px'; }
-    below+=rows[i].getBoundingClientRect().height;
-  }
-}
-
-// ---- wiring (sekali) ----
-function p10Wire(){
-  if(P10.wired) return; P10.wired=true;
-  var box=document.getElementById('p10-table');
-  function clearCX(){ Array.prototype.forEach.call(box.querySelectorAll('.p10-cx-col,.p10-cx-row,.p10-cx-cell'), function(el){ el.classList.remove('p10-cx-col','p10-cx-row','p10-cx-cell'); }); }
-  box.addEventListener('mouseover', function(e){
-    var cell=e.target.closest('td,th'); if(!cell) return;
-    var tbl=cell.closest('table.p10-sched'); if(!tbl) return;
-    var col=cell.cellIndex, tr=cell.parentNode;
-    clearCX();
-    Array.prototype.forEach.call(tr.cells, function(c){ c.classList.add('p10-cx-row'); });
-    Array.prototype.forEach.call(tbl.rows, function(rw){ var c=rw.cells[col]; if(c) c.classList.add('p10-cx-col'); });
-    cell.classList.add('p10-cx-cell');
-  });
-  box.addEventListener('mouseleave', clearCX);
-  document.getElementById('p10-prev').onclick=function(){ P10.focus=p10IsoAddDays(P10.focus,-7); p10EnsureWindow().then(p10Render); };
-  document.getElementById('p10-next').onclick=function(){ P10.focus=p10IsoAddDays(P10.focus,7); p10EnsureWindow().then(p10Render); };
-  document.getElementById('p10-year').onchange=function(){
-    var y=this.value;
-    P10.focus = (y===P10.currentYear) ? P10.today : (y+'-01-08');
-    p10EnsureWindow().then(p10Render);
-  };
-  document.getElementById('p10-filter').addEventListener('input', function(){ P10.filter=this.value; p10Render(); });
-  window.addEventListener('resize', function(){ p10StickFooter(); });
-}
-
-// ---- init (dipanggil gotoPage sekali) ----
 function initP10(){
-  if(P10.ready) return;
-  loading(true);
-  p10Gs('jdGetBundle', null).then(function(b){
-    if(!b || b.ok===false){ throw new Error((b&&b.error)||'Gagal memuat data jadwal dinas.'); }
-    P10.currentYear=p10ApplyBundle(b);
-    p10FillYears();
-    P10.focus=P10.today;
-    p10Wire();
-    return p10EnsureWindow().then(function(){ p10Render(); P10.ready=true; });
-  }).then(function(){ loading(false); })
-    .catch(function(e){ loading(false); toast((e&&e.message)?e.message:String(e),'err');
-      document.getElementById('p10-table').innerHTML='<div class="p10-empty">Gagal memuat data.</div>'; });
+  // Isi src sekali saja saat tab pertama dibuka (lazy load).
+  var f=document.getElementById('p10-frame');
+  if(f && !f.src) f.src=P10_URL;
 }
 </script>

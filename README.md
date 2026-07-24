@@ -28,7 +28,7 @@ Tujuan utama: pencatatan untuk **audit, surveilans, penelitian, dan statistik** 
 | `page7.html` | Permintaan dinas: form **Ajukan + Batalkan** (native) + tabel jawaban read-only; **baca & tulis** spreadsheet eksternal Form responses |
 | `page8.html` | Statistik (diagnosis/alat dari ws1; metrik pasien dari sheet Merge) |
 | `page9.html` | **Logbook Perawat Goretty** (baca spreadsheet eksternal, read-only) |
-| `page10.html` | **Jadwal Dinas** — matriks jadwal dinas perawat (baca spreadsheet Daftar Dinas, read-only). Port native dari Tab 1 web app "Daftar Dinas". |
+| `page10.html` | **Jadwal Dinas** — bukan tabel internal, melainkan *embed* (iframe) ke web app Apps Script eksternal "Daftar Dinas IPI" (sama dengan proyek Damianus), read-only. |
 | `page11.html` | **Jadwal Jaga Anestesi** — *embed* (iframe) ke web app Apps Script eksternal "Jadwal Jaga Anestesi", read-only. |
 
 > Tidak ada `page6.html`. Urutan tab: p1, p2, p3, p4, p5, p7, p8, p9 (label tab p9 = "📒 Logbook"), p10 ("📅 Jadwal Dinas"), p11 ("🗓️ Jadwal jaga Anestesi").
@@ -43,8 +43,9 @@ Setiap halaman di-include ke `index.html` sebagai template dan punya fungsi `ini
 
 ### Identitas teknis
 - **Spreadsheet utama (terikat):** `17PUDkWDfNS_FDvjZVCA9r_mdul-T8uYNSevCWxfYgpk`
-- **Spreadsheet eksternal — Permintaan Dinas (Page7) & Jadwal Dinas (Page10):** `1i0lJ8dyeAUXvdEsPIPvMgO5cUfYF5e0LG6h7RLzpwpM` (konstanta `PD_SS_ID`; dipakai bersama oleh Page7 & Page10)
+- **Spreadsheet eksternal — Permintaan Dinas (Page7):** `1i0lJ8dyeAUXvdEsPIPvMgO5cUfYF5e0LG6h7RLzpwpM` (konstanta `PD_SS_ID`)
 - **Spreadsheet eksternal — Logbook Perawat Goretty (Page9):** `11pJK2JfLt1Zv1iJN4YFSakGo65Yn4daw2hFm0DXJX1M`
+- **Web app eksternal — Jadwal Dinas (Page10, iframe):** `https://script.google.com/macros/s/AKfycbyia5srJF2bU_ilLuGuoVgLOG1a4cew6BR_54El4ehZ0Pmly-kImnrUkxK72B-WmQrGfQ/exec` (app "Daftar Dinas IPI", sama dengan yang di-embed di proyek Damianus)
 - **Web app eksternal — Jadwal Jaga Anestesi (Page11, iframe):** `https://script.google.com/macros/s/AKfycbzrD9WiIfvZKscjfK0MeP0NiKJiD0y1emIbcCoNYm6i3zDCPsCGg1u4pD1hJJnRu0EX0Q/exec`
 
 ### Sheet di spreadsheet utama
@@ -351,7 +352,7 @@ Target hardcode: `{ I:80, II:80, III:75, IV:80, V:43 }`. PK number: `{ I:1..V:5 
 - **Page3** — `getLaporan(filter)` (default 3 hari terakhir); `getNamaPasienDalamRentang(tm,ta)`; edit inline via `updateLaporan` (§8); Refresh & Cetak PDF.
 - **Page4** — `getDataPage4`, `getAllLaporanPasien`, `cariSemuaNamaPasien`; tombol Refresh muat ulang tampilan aktif. Payload "pasien hari ini" (semua pasien, 6 laporan/pasien) di-**cache klien** (`p4dHariData`): ganti pilihan nama di dropdown me-render dari cache **tanpa server call**. Jalur keluar-mode-search & Refresh tetap fetch.
 - **Page7** — tabel: `getDaftarDinas(tm,ta)` dari spreadsheet eksternal (filter unit kolom I mengandung "G"); form: `getStafPermintaan()` (dropdown nama, dari LookUp), `submitPermintaan(data)` (append A:G), `listPermintaanByName(nama)` + `cancelPermintaan(row,nama)` (batalkan → G=BATAL). Helper: `_pdFormSheet_`, `_pdParseDate_`, `_pdNameKey_`, `_pdBustCache_`.
-- **Page10 (Jadwal Dinas, READ-ONLY)** — matriks jadwal dinas perawat, port native dari Tab 1 web app "Daftar Dinas". Backend `code.gs` prefiks `jd` (spreadsheet `PD_SS_ID`, **sama dengan Page7**): `jdGetBundle(tahun)` (1 call saat load: LookUp + matriks tahun + daftar staf + hari libur) dan `jdGetYear(tahun)` (matriks 1 tahun, untuk ganti/lintas-tahun). Keduanya **kembalikan JSON string** (`{ok:...}`). Helper `jd_*` (memoize `jd_ss_`/`jd_tz_`, parse tanggal, dsb). **Hanya jalur baca** — tidak ada fungsi tulis/admin/form. Frontend prefiks `p10` (state `P10`, wrapper `p10Gs` yang `JSON.parse`): jendela 7 hari sebelum & sesudah hari ini (lintas-tahun), navigasi minggu ◀▶, filter Nama, warna shift Pagi/Siang/Malam + libur/Minggu, baris hitung shift sticky, crosshair hover. Tanpa Bootstrap (CSS custom `p10-`).
+- **Page10 (Jadwal Dinas, embed)** — bukan port; hanya **iframe** ke web app Apps Script eksternal "Daftar Dinas IPI" (URL di §Identitas, sama dengan yang di-embed di proyek Damianus). **Tanpa backend.** Frontend prefiks `p10`: `initP10()` men-set `src` iframe **lazy** (hanya saat tab pertama dibuka) + tombol "buka di tab baru ↗" sebagai cadangan bila iframe gagal. **Sengaja embed, bukan port native** (versi sebelumnya matriks native prefiks `jd`/`p10` sudah dibuang) agar kebal terhadap perubahan logika/format sheet di app sumber.
 - **Page11 (Jadwal Jaga Anestesi, embed)** — bukan port; hanya **iframe** ke web app Apps Script eksternal (URL di §Identitas). **Tanpa backend.** Frontend prefiks `p11`: `initP11()` men-set `src` iframe **lazy** (hanya saat tab pertama dibuka) + hitung tinggi (`p11Resize`, fit viewport, dipanggil tiap tab dibuka & saat resize) + tombol "↗ Buka di tab baru" sebagai cadangan bila iframe gagal (auth/sandbox). **Sengaja embed, bukan port**, karena mesin proyeksi Rule app anestesi kompleks & mungkin berubah — port akan cepat usang; iframe kebal terhadap perubahan logika di app sumber.
 
 ### Hari operasional (pergantian pukul 07:00) — Page1 **dan** Page5
