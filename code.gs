@@ -256,7 +256,9 @@ function updateLaporan(nomor, isiLaporan, diagnosis) {
 function getNamaPasienDalamRentang(tm, ta) {
   var ws1Last = ws1.getLastRow(); if(ws1Last<2) return JSON.stringify([]);
   var tz = Session.getScriptTimeZone();
-  var data = ws1.getRange(2,1,Math.min(ws1Last-1,500),5).getValues();
+  var maxRows = Math.min(ws1Last-1,500);
+  var startRow = ws1Last - maxRows + 1; if(startRow<2) startRow=2;
+  var data = ws1.getRange(startRow,1,ws1Last-startRow+1,5).getValues();
   var set = {};
   data.forEach(function(r){
     if(!r[4]) return; var tgl='';
