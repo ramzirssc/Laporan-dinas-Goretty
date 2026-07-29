@@ -32,14 +32,33 @@ function opsipasien(){  return opsi("I2:I").map(d=>`<option>${d}</option>`).join
 function opsitempat(){  return opsi("C2:C").map(d=>`<option>${d[0]}</option>`).join(""); }
 
 function htmlCheckbox(){ return [
-  'CAPD','Chemoport','Cimino','CPAP','CRRT','CVC',
-  'Doublelumen|Double lumen HD','Drain','Facemask','HFNC','ICON','Kateter',
+  'ArterialLine|Arterial line','CAPD','Chemoport','Cimino','CPAP','CRRT','CVC',
+  'Doublelumen|Double lumen HD','Drain','Facemask','HFNC','ICON','IVLine|IV line','Kateter',
   'Nasalkanul','Nefrostomi','NGT','NIV','PICC',
   'Trakeostomi','Triplelumen|Triple lumen HD','Umbicath','Ventilator','WSD'
 ].map(function(item){
   var p = item.split("|");
   return `<label class="check-item" for="${p[0]}"><input type="checkbox" id="${p[0]}" class="multi" value="${p[0]}" disabled>${p[1]||p[0]}</label>`;
 }).join("\n"); }
+
+// PPI (Pencegahan & Pengendalian Infeksi) — 10 checkbox, kelas CSS terpisah (.ppi)
+// dari alat medik (.multi) supaya kode bisa membedakan kelompok lewat kelas elemen.
+const PPI_LIST = [
+  'VAP','IADP','Plebitis','ISK','IDO','HAP','HAIs',
+  'RuamPopokICU|Ruam Popok di ICU',
+  'RuamPopokRanap|Ruam Popok di Ruang Rawat',
+  'RuamPopokLuarRSSC|Ruam Popok di Luar RSSC'
+];
+
+function htmlCheckboxPpi(){ return PPI_LIST.map(function(item){
+  var p = item.split("|");
+  return `<label class="check-item" for="${p[0]}"><input type="checkbox" id="${p[0]}" class="ppi" value="${p[0]}" disabled>${p[1]||p[0]}</label>`;
+}).join("\n"); }
+
+// Dropdown nama antibiotik (5 slot Page5) — sumber Lookup!K2:K. Freq & dosis
+// SENGAJA dibiarkan isian bebas (bukan dropdown) karena dosis anak-anak sulit
+// dibakukan; hanya jenis antibiotiknya yang dipilih dari daftar baku.
+function opsiantibiotik(){ return opsi("K2:K").map(d=>`<option>${d}</option>`).join(""); }
 
 function doGet(e) {
   var tmpl = HtmlService.createTemplateFromFile("index");
@@ -253,6 +272,35 @@ function updateLaporan(nomor, isiLaporan, diagnosis) {
   return JSON.stringify({ok:true, nomor:Number(nomor)});
 }
 
+// §5 — daftar checklist (id+label) utk editor inline Page3, 1 sumber sama dgn
+// Page5 (ALAT_LIST/PPI_LIST) supaya menambah 1 alat medik/PPI baru cukup ubah 1 tempat.
+// antibiotikNama ikut disertakan (1 pembacaan Lookup!K, sudah di-cache oleh opsi()).
+function checklistDefsJson(){
+  function toDefs(list){
+    return list.map(function(item){
+      var p = item.split('|');
+      return {id:p[0], label:p[1]||p[0]};
+    });
+  }
+  return JSON.stringify({
+    alat: toDefs(ALAT_LIST),
+    ppi: toDefs(PPI_LIST),
+    antibiotikNama: opsi("K2:K").map(function(d){return String(d[0]||'');}).filter(Boolean)
+  });
+}
+
+// §5 — replace PENUH kolom I (alat medik+PPI+antibiotik+DPJP) dari editor inline
+// Page3. Klien mengirim SELURUH isi kolom I sekaligus (bukan splice sebagian) —
+// mencegah race condition andai alat-medik & DPJP disimpan lewat 2 panggilan
+// terpisah (baca-ubah-tulis tanpa lock).
+function updateAlatMedik(nomor, alatMedikBaru) {
+  var baris = _cariRowByNomor_(nomor);
+  if(baris < 0) return JSON.stringify({ok:false, alasan:'tidak_ditemukan'});
+  ws1.getRange(baris, 9).setValue(String(alatMedikBaru||'')); // kolom I
+  CacheService.getScriptCache().removeAll(['p1_data','init_data']);
+  return JSON.stringify({ok:true, nomor:Number(nomor)});
+}
+
 function getNamaPasienDalamRentang(tm, ta) {
   var ws1Last = ws1.getLastRow(); if(ws1Last<2) return JSON.stringify([]);
   var tz = Session.getScriptTimeZone();
@@ -384,25 +432,6 @@ function cariSemuaNamaPasien(query) {
 // ═══════════════════════════════════════════════════════
 //  PAGE 5 — TULIS LAPORAN
 // ═══════════════════════════════════════════════════════
-// getFormOptions: bed dari Lookup kolom C (dinamis)
-function getFormOptions() {
-  var beds = opsi("C2:C").map(function(d){return String(d[0]||'').trim();}).filter(Boolean);
-  return JSON.stringify({
-    opsiperawat: opsi("E2:E").map(function(d){return String(d[0]||'');}),
-    opsipasien:  opsi("I2:I").map(function(d){return String(d[0]||'');}),
-    opsibed: beds,
-    htmlCheckbox:[
-      'CAPD','Chemoport','Cimino','CPAP','CRRT','CVC',
-      'Doublelumen|Double lumen HD','Drain','Facemask','HFNC','ICON','Kateter',
-      'Nasalkanul','Nefrostomi','NGT','NIV','PICC',
-      'Trakeostomi','Triplelumen|Triple lumen HD','Umbicath','Ventilator','WSD'
-    ].map(function(item){
-      var p=item.split('|');
-      return {id:p[0],label:p[1]||p[0]};
-    })
-  });
-}
-
 function getInitialData() {
   var cache = CacheService.getScriptCache();
   var cached = cache.get('init_data');
@@ -598,7 +627,14 @@ function _prevShiftDataFrom_(data, nama, tanggal, shift, tz) {
     found = r; // ambil kemunculan terakhir di sheet
   }
   if(!found) return kosong;
-  return {diagnosis:String(found[6]||''), alatmedik:String(found[8]||''), bed:String(found[16]||'')};
+  // DPJP visit <14:00 adalah fakta HARIAN (bukan menetap seperti alat medik) —
+  // buang token-nya saat shift sebelumnya jatuh di tanggal lain (kasus Pagi
+  // yang mengacu ke Malam kemarin). Sama hari (Sore<-Pagi, Malam<-Sore) tetap terbawa.
+  var alatmedikKeluar = String(found[8]||'');
+  if(prevTgl !== tgtTgl){
+    alatmedikKeluar = alatmedikKeluar.split(';').filter(function(t){return t.trim()!=='DpjpVisit14';}).join(';');
+  }
+  return {diagnosis:String(found[6]||''), alatmedik:alatmedikKeluar, bed:String(found[16]||'')};
 }
 
 // SATU panggilan server untuk Page5: daftar nama + data pasien + data shift
@@ -1047,8 +1083,8 @@ const DIAGNOSIS_LIST = [
 ];
 
 const ALAT_LIST = [
-  'CAPD','Chemoport','Cimino','CPAP','CRRT','CVC',
-  'Doublelumen|Double lumen HD','Drain','Facemask','HFNC','ICON','Kateter',
+  'ArterialLine|Arterial line','CAPD','Chemoport','Cimino','CPAP','CRRT','CVC',
+  'Doublelumen|Double lumen HD','Drain','Facemask','HFNC','ICON','IVLine|IV line','Kateter',
   'Nasalkanul','Nefrostomi','NGT','NIV','PICC',
   'Trakeostomi','Triplelumen|Triple lumen HD','Umbicath','Ventilator','WSD'
 ];

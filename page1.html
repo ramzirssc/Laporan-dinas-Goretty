@@ -1,30 +1,15 @@
 <!-- PAGE 1: DAFTAR PASIEN HARI INI -->
 <style>
-  .p1h{display:flex;align-items:center;justify-content:space-between;
-    padding:11px 18px;background:#1e3f62;color:#fff;
-    border-radius:var(--radius-lg) var(--radius-lg) 0 0;}
-  .p1h .ht{font-family:var(--serif);font-size:14px;font-style:italic;font-weight:600}
-  .p1h .hs{font-size:11px;opacity:.7;margin-top:1px}
-  .p1h .hn{font-size:24px;font-weight:700;line-height:1}
-  .p1h .hl{font-size:11px;opacity:.7}
-  /* Tombol refresh di header */
-  .p1-refresh{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);
-    color:#fff;border-radius:var(--radius-sm);padding:4px 10px;font-size:11px;font-weight:600;
-    cursor:pointer;display:flex;align-items:center;gap:5px;transition:background .18s;
-    white-space:nowrap;margin-top:6px}
-  .p1-refresh:hover{background:rgba(255,255,255,.28)}
-  .p1-refresh.spinning .p1-refresh-icon{display:inline-block;animation:spin .6s linear infinite}
   @keyframes p1spin{to{transform:rotate(360deg)}}
-  .p1-refresh-icon{display:inline-block;font-style:normal}
   .p1-card{background:var(--surface);border:1px solid var(--border-soft);
-    border-top:none;border-radius:0 0 var(--radius-lg) var(--radius-lg);
+    border-radius:var(--radius-lg);
     box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden;}
   .p1-scroll{overflow-x:auto;overflow-y:auto;
     max-height:calc(100vh - var(--topbar-h,52px) - 90px);}
   .p1t{border-collapse:collapse;font-size:12px;width:100%}
   .p1t thead{position:sticky;top:0;z-index:30}
-  .p1t thead tr{background:#1e3f62 !important}
-  .p1t thead tr th{background:#1e3f62 !important;color:#fff !important;
+  .p1t thead tr{background:var(--thead-grad) !important}
+  .p1t thead tr th{background:var(--thead-grad) !important;color:#fff !important;
     padding:8px 9px;font-size:10px;font-weight:700;text-transform:uppercase;
     letter-spacing:.04em;text-align:left;vertical-align:bottom;
     line-height:1.3;white-space:normal;word-break:break-word;}
@@ -37,7 +22,7 @@
   .p1t tbody td.muted{color:var(--muted);font-size:11.5px}
   .p1t tbody td.nowrap{white-space:nowrap}
   .p1t th.frz,.p1t td.frz{position:sticky;z-index:20}
-  .p1t thead th.frz{z-index:31;background:#1e3f62 !important}
+  .p1t thead th.frz{z-index:31;background:var(--thead-grad) !important}
   .p1t th.frz-last,.p1t td.frz-last{box-shadow:2px 0 5px rgba(30,60,120,.18)}
   .sg{display:flex;flex-wrap:wrap;gap:4px}
   .bs{padding:5px 10px;font-size:11px;font-weight:600;border-radius:10px;
@@ -72,26 +57,11 @@
   .p1-loader{text-align:center;padding:28px;color:var(--muted)}
   .p1-empty{text-align:center;padding:40px;color:var(--muted)}
   @media(max-width:767px){
-    .p1h{padding:9px 14px}.p1h .hn{font-size:20px}
     .p1-scroll{max-height:calc(100vh - var(--topbar-h,52px) - 80px);}
     .p1t tbody td{padding:7px 7px;font-size:11.5px}
     .p1t thead tr th{padding:7px 7px;font-size:9.5px}
   }
 </style>
-
-<div class="p1h">
-  <div>
-    <div class="ht">Daftar Pasien Goretty</div>
-    <div class="hs" id="p1-tgl">—</div>
-    <button class="p1-refresh" id="p1-refresh-btn" onclick="refreshP1()">
-      <span class="p1-refresh-icon" id="p1-refresh-icon">↻</span> Refresh
-    </button>
-  </div>
-  <div style="text-align:right">
-    <div class="hn" id="p1-n">—</div>
-    <div class="hl">pasien hari ini</div>
-  </div>
-</div>
 
 <div class="p1-card">
   <div class="p1-loader" id="p1-loader">Memuat daftar pasien…</div>
@@ -105,8 +75,63 @@
 var P1_SHIFT_W=145;
 var P1_FRZ=window.innerWidth<768?3:6;
 var P1_NOWRAP_LABELS=['jk','tgl lahir','tgl masuk','no.wa','hari ke-','tempat'];
+var P1_WIZ_SHIFT_ORDER=['Pagi','Sore','Malam'];
+var P1_WIZ_TARGET=null; // {shift, hariIni, queue:[nama,...]} — dihitung ulang tiap renderP1()
 
 function initP1(){loading(true);_fetchP1();p1PrefetchWebAppUrl();}
+
+// Tentukan shift target wizard: yang pertama BUKA (sesuai jam dinas) dan masih ada
+// pasien belum dilaporkan (urutan Pagi->Sore->Malam). "Buka" dari server berarti
+// "sudah lewat jam mulainya hari ini" — bisa lebih dari 1 shift buka sekaligus
+// (mis. jam 15:00, Pagi & Sore dua-duanya buka), jadi tidak cukup ambil shift
+// pertama yang buka — harus yang masih ada pending.
+function p1UpdateWizard(list, sudah, buka, hariIni){
+  var btn=document.getElementById('tbar-wiz-btn'), info=document.getElementById('tbar-wiz-info');
+  if(!btn||!info) return;
+  if(!list.length){
+    btn.disabled=true; info.textContent='Tidak ada pasien hari ini'; info.classList.add('show');
+    P1_WIZ_TARGET=null; return;
+  }
+  var target=null;
+  for(var i=0;i<P1_WIZ_SHIFT_ORDER.length;i++){
+    var s=P1_WIZ_SHIFT_ORDER[i];
+    if(buka[s]!==true) continue;
+    var pending=list.filter(function(p){
+      var key=(p.nama+'|'+s).toLowerCase();
+      return !sudah.hasOwnProperty(key);
+    });
+    if(pending.length){
+      target={shift:s, queue:pending.map(function(p){return p.nama;}),
+              total:list.length, done:list.length-pending.length};
+      break;
+    }
+  }
+  if(target){
+    P1_WIZ_TARGET={shift:target.shift, hariIni:hariIni, queue:target.queue};
+    btn.disabled=false;
+    info.textContent=target.done+'/'+target.total+' laporan '+target.shift+' selesai';
+    info.classList.add('show');
+  }else{
+    P1_WIZ_TARGET=null;
+    btn.disabled=true;
+    var adaBuka=P1_WIZ_SHIFT_ORDER.some(function(s){return buka[s]===true;});
+    info.textContent=adaBuka?'Semua laporan hari ini lengkap':'Menunggu jam dinas';
+    info.classList.add('show');
+  }
+}
+
+function mulaiWizard(){
+  if(!P1_WIZ_TARGET || !P1_WIZ_TARGET.queue.length) return;
+  // `all` = daftar tetap urutan pasien (tidak berkurang saat lewat/simpan) supaya
+  // bisa navigasi maju-mundur; `pos` = indeks pasien yang sedang dibuka. Goretty
+  // tidak perlu peta savedNomor terpisah (beda dari Damianus) -- p5Open() Page5
+  // sudah selalu cek ulang ke server (getPaketLaporan) tiap pindah pasien, jadi
+  // laporan yang sudah tersimpan otomatis kebuka di mode lihat, bukan dobel.
+  window.WIZ={active:true, shift:P1_WIZ_TARGET.shift, hariIni:P1_WIZ_TARGET.hariIni,
+              all:P1_WIZ_TARGET.queue.slice(), pos:0};
+  gotoPage('p5',{isNew:true, namaPasien:window.WIZ.all[0], shift:window.WIZ.shift,
+                  hariIni:window.WIZ.hariIni, wizard:true});
+}
 
 // Ambil URL web app sekali saat Page1 dimuat, supaya klik badge nanti instan
 // (tidak menunggu round-trip server sebelum window.open → hindari popup-blocker).
@@ -132,8 +157,8 @@ function p1OpenP5Tab(qs,fallback){
 function refreshP1(){
   // OPTIMASI: panggil invalidateP1Cache() dulu (hapus cache server),
   // baru _fetchP1() → data yang diterima selalu segar, bukan dari cache lama
-  var btn=document.getElementById('p1-refresh-btn');
-  var icon=document.getElementById('p1-refresh-icon');
+  var btn=document.getElementById('tbar-refresh-btn');
+  var icon=document.getElementById('tbar-refresh-icon');
   btn.disabled=true;
   icon.style.animation='p1spin .6s linear infinite';
   google.script.run
@@ -180,14 +205,9 @@ function renderP1(raw){
       if(dEl)dEl.textContent='Dokter jaga: '+obj.dokterJaga;
     }
     document.getElementById('p1-loader').style.display='none';
-    document.getElementById('p1-n').textContent=list.length;
-    var blArr=['Januari','Februari','Maret','April','Mei','Juni',
-            'Juli','Agustus','September','Oktober','November','Desember'];
-    if(hariIni){
-      var hp=hariIni.split('-');
-      document.getElementById('p1-tgl').textContent=
-        parseInt(hp[2],10)+' '+blArr[parseInt(hp[1],10)-1]+' '+hp[0];
-    }
+    var nEl=document.getElementById('tbar-n');
+    if(nEl)nEl.textContent=list.length+' pasien hari ini';
+    p1UpdateWizard(list, sudah, shiftBuka, hariIni);
     if(!list.length){document.getElementById('p1-empty').style.display='block';return;}
     if(!colDefs.length){
       document.getElementById('p1-loader').style.display='block';
@@ -214,6 +234,7 @@ function renderP1(raw){
     });
     thead.innerHTML='';thead.appendChild(trH);
     document.getElementById('p1-scroll').style.display='block';
+    applyRowGradient(trH);
     var tbody=document.getElementById('p1-tbody');tbody.innerHTML='';
     list.forEach(function(p){
       var tr=document.createElement('tr');

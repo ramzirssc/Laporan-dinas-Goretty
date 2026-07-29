@@ -24,7 +24,7 @@
   .p9-sum-val{font-size:17px;font-weight:700;color:var(--blue-dk);margin-top:2px}
 
   .p9-tbl{width:100%;border-collapse:collapse;font-size:12px}
-  .p9-tbl thead th{background:#1e3f62;color:#fff;padding:8px 10px;font-size:10.5px;font-weight:700;
+  .p9-tbl thead th{background:var(--thead-grad);color:#fff;padding:8px 10px;font-size:10.5px;font-weight:700;
     text-transform:uppercase;letter-spacing:.03em;text-align:right;white-space:nowrap;
     border-right:1px solid rgba(255,255,255,.1)}
   .p9-tbl thead th:first-child{text-align:left}
@@ -36,7 +36,7 @@
   .p9-scroll{overflow-x:auto}
   .p9-wide thead th{position:sticky;top:0;z-index:5}
   .p9-wide td.p9-sticky,.p9-wide th.p9-sticky{position:sticky;background:var(--surface);z-index:6}
-  .p9-wide thead th.p9-sticky{background:#1e3f62;z-index:8}
+  .p9-wide thead th.p9-sticky{background:var(--thead-grad);z-index:8}
   .p9-wide .p9-s1{left:0;min-width:70px;text-align:left}
   .p9-wide .p9-s2{left:70px;min-width:190px;text-align:left;box-shadow:2px 0 5px rgba(30,60,120,.12)}
   .p9-wide tbody tr:nth-child(even) td.p9-sticky{background:var(--surface2)}
@@ -147,6 +147,7 @@ function p9Render(){
 
   if(!rows.length){ cont.innerHTML='<div class="p9-nodata">Tidak ada data untuk periode ini</div>'; return; }
   cont.innerHTML = npk ? p9RenderOne(rows[0]) : p9RenderAll(rows);
+  cont.querySelectorAll('.p9-tbl thead tr').forEach(applyRowGradient);
 }
 
 function p9RenderOne(r){

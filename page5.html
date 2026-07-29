@@ -21,12 +21,33 @@
    background:var(--surface);border:1px solid var(--border-soft);
    border-radius:var(--radius-lg);box-shadow:var(--shadow)}
  .act-hint5{font-size:12px;color:var(--muted);font-style:italic}
+ /* Badge mode berurutan (wizard) — dipicu dari tombol "Mulai Laporan Shift Ini" Page1 */
+ .p5wiz{display:none;align-items:center;justify-content:space-between;gap:8px;
+   flex-wrap:wrap;padding:11px 16px;margin-bottom:12px;background:var(--thead-grad);
+   border-radius:var(--radius-lg);color:#fff;font-size:12.5px;font-weight:600}
+ .p5wiz.show{display:flex}
+ .p5wiz-info{margin-right:auto}
+ .p5wiz-btns{display:flex;gap:6px;align-items:center}
+ .p5wiz-exit,.p5wiz-nav{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.4);
+   color:#fff;border-radius:var(--radius-sm);padding:5px 11px;font-size:11.5px;
+   font-weight:600;cursor:pointer;white-space:nowrap}
+ .p5wiz-exit:hover:not(:disabled),.p5wiz-nav:hover:not(:disabled){background:rgba(255,255,255,.28)}
+ .p5wiz-nav:disabled{opacity:.4;cursor:not-allowed}
  @media(max-width:767px){
    .p5h{padding:10px 14px}.p5h h2{font-size:15px}
    .act-bar5{padding:10px 14px;gap:8px}
    .act-hint5{width:100%;text-align:center}
  }
 </style>
+
+<div class="p5wiz" id="p5wiz">
+ <span class="p5wiz-info" id="p5wiz-info">Mode berurutan</span>
+ <div class="p5wiz-btns">
+   <button class="p5wiz-nav" id="p5wiz-prev" onclick="p5WizPrev()" title="Ke laporan sebelumnya">&lsaquo; Sebelumnya</button>
+   <button class="p5wiz-nav" id="p5wiz-next" onclick="p5WizSkip()" title="Lewati tanpa simpan, ke pasien berikutnya">Lewati &rsaquo;</button>
+   <button class="p5wiz-exit" onclick="p5WizKeluar()">Keluar mode berurutan</button>
+ </div>
+</div>
 
 <div class="p5h">
  <h2>Laporan Dinas <span>/ Ruang Goretty</span></h2>
@@ -101,6 +122,65 @@
  <div class="cbx-grid"><?!= htmlCheckbox() ?></div>
 </div>
 <div class="card">
+ <div class="card-title">DPJP Visit</div>
+ <div class="cbx-grid">
+  <label class="check-item" for="DpjpVisit14">
+   <input type="checkbox" id="DpjpVisit14" class="dpjp14" value="DpjpVisit14" disabled>DPJP visit &lt;14.00
+  </label>
+ </div>
+</div>
+<div class="card">
+ <div class="card-title">PPI (Pencegahan &amp; Pengendalian Infeksi)</div>
+ <div class="cbx-grid"><?!= htmlCheckboxPpi() ?></div>
+ <div class="grid g4" style="margin-top:10px">
+   <div class="field" style="grid-column:span 2"><label>Tindakan Operasi</label>
+     <input type="text" id="p5ppiTindakan" placeholder="—" disabled></div>
+   <div class="field"><label>Hasil Kultur</label>
+     <input type="text" id="p5ppiKultur" placeholder="0" disabled></div>
+   <div class="field"><label>Suhu (&deg;C)</label>
+     <input type="number" id="p5ppiSuhu" placeholder="36" step="0.1" disabled></div>
+ </div>
+</div>
+<div class="card">
+ <div class="card-title">Antibiotik</div>
+ <div class="grid g4" style="row-gap:8px">
+   <div class="field"><label>Antibiotik 1</label>
+     <select id="p5abNama1" disabled><option value="">— tidak ada —</option><?!= opsiantibiotik() ?></select></div>
+   <div class="field"><label>Frekuensi</label>
+     <select id="p5abFreq1" disabled><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></div>
+   <div class="field" style="grid-column:span 2"><label>Dosis</label>
+     <input type="text" id="p5abDosis1" placeholder="Teks bebas contoh: 100 mg, 200 mg, 1 gram" disabled></div>
+
+   <div class="field"><label>Antibiotik 2</label>
+     <select id="p5abNama2" disabled><option value="">— tidak ada —</option><?!= opsiantibiotik() ?></select></div>
+   <div class="field"><label>Frekuensi</label>
+     <select id="p5abFreq2" disabled><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></div>
+   <div class="field" style="grid-column:span 2"><label>Dosis</label>
+     <input type="text" id="p5abDosis2" placeholder="Teks bebas contoh: 100 mg, 200 mg, 1 gram" disabled></div>
+
+   <div class="field"><label>Antibiotik 3</label>
+     <select id="p5abNama3" disabled><option value="">— tidak ada —</option><?!= opsiantibiotik() ?></select></div>
+   <div class="field"><label>Frekuensi</label>
+     <select id="p5abFreq3" disabled><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></div>
+   <div class="field" style="grid-column:span 2"><label>Dosis</label>
+     <input type="text" id="p5abDosis3" placeholder="Teks bebas contoh: 100 mg, 200 mg, 1 gram" disabled></div>
+
+   <div class="field"><label>Antibiotik 4</label>
+     <select id="p5abNama4" disabled><option value="">— tidak ada —</option><?!= opsiantibiotik() ?></select></div>
+   <div class="field"><label>Frekuensi</label>
+     <select id="p5abFreq4" disabled><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></div>
+   <div class="field" style="grid-column:span 2"><label>Dosis</label>
+     <input type="text" id="p5abDosis4" placeholder="Teks bebas contoh: 100 mg, 200 mg, 1 gram" disabled></div>
+
+   <div class="field"><label>Antibiotik 5</label>
+     <select id="p5abNama5" disabled><option value="">— tidak ada —</option><?!= opsiantibiotik() ?></select></div>
+   <div class="field"><label>Frekuensi</label>
+     <select id="p5abFreq5" disabled><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></div>
+   <div class="field" style="grid-column:span 2"><label>Dosis</label>
+     <input type="text" id="p5abDosis5" placeholder="Teks bebas contoh: 100 mg, 200 mg, 1 gram" disabled></div>
+ </div>
+</div>
+<div class="card">
  <div class="card-title">Diagnosis</div>
  <textarea id="p5diagnosis" rows="5" placeholder="Ketik diagnosis di sini." disabled></textarea>
 </div>
@@ -121,8 +201,58 @@ var p5Nama='', p5Ready=false, p5Mode='lihat', p5Edit=false;
 // Field IDENTITAS yang dikunci (abu-abu) saat membuat laporan baru.
 var P5_LOCK = ['p5tanggal','p5dinas','p5namahidden','p5pasien',
                'p5umur','p5harike','p5agama','p5jaminan','p5dpjp','p5dpjplain'];
+// Field bebas-teks (bukan checkbox) yang isinya ikut ditulis ke kolom I sbg
+// token Key=Value, SELALU ditulis walau kosong/default (lihat p5Kumpul/p5ApplyKV).
+var P5_PPI_FIELDS = ['p5ppiTindakan','p5ppiKultur','p5ppiSuhu'];
+// Antibiotik: 5 slot x (Nama select + Freq teks bebas + Dosis teks bebas). Slot
+// yang Nama-nya kosong TIDAK ditulis ke kolom I (lihat p5Kumpul).
+var P5_AB_FIELDS = [];
+for(var p5abI=1; p5abI<=5; p5abI++){ P5_AB_FIELDS.push('p5abNama'+p5abI,'p5abFreq'+p5abI,'p5abDosis'+p5abI); }
 // Field yang BISA diubah saat membuat laporan baru.
-var P5_NEW_EDIT = ['p5pj','p5pp','p5bed','p5diagnosis','p5laporan'];
+var P5_NEW_EDIT = ['p5pj','p5pp','p5bed','p5diagnosis','p5laporan'].concat(P5_PPI_FIELDS,P5_AB_FIELDS);
+// Field non-checkbox yang tetap bisa diedit saat memperbarui laporan lama (p5Perbarui).
+var P5_EDIT_EXTRA = ['p5bed','p5diagnosis','p5laporan'].concat(P5_PPI_FIELDS,P5_AB_FIELDS);
+// Semua kelas checkbox yang ikut ditulis ke kolom I (alat medik + DPJP visit + PPI)
+// -- dipakai bersama utk reset/kunci/kumpul.
+var P5_CB_SEL = '.multi,.dpjp14,.ppi';
+var P5_CB_SEL_CHECKED = '.multi:checked,.dpjp14:checked,.ppi:checked';
+
+// Sanitasi nilai bebas sebelum digabung ke string kolom I (';' adalah pemisah token utama).
+function p5PpiEsc(s){ return String(s||'').replace(/;/g,','); }
+
+// Urai token 'Key=Value' dari string kolom I mentah -> {Key:Value}. Token tanpa
+// '=' (checkbox alat medik/PPI/DPJP) diabaikan di sini -- itu ditangani terpisah
+// oleh restore checkbox berbasis id (id===value, lihat catatan htmlCheckbox()).
+function p5ParseKV(raw){
+ var kv={};
+ String(raw||'').split(';').forEach(function(tok){
+   var i=tok.indexOf('=');
+   if(i>=0) kv[tok.substring(0,i).trim()]=tok.substring(i+1);
+ });
+ return kv;
+}
+
+// Isi field PPI singkat (Tindakan/Kultur/Suhu) dari string kolom I mentah, dgn
+// default yang sama seperti saat ditulis (lihat p5Kumpul) bila token tak ada.
+function p5ApplyPpiFields(raw){
+ var kv=p5ParseKV(raw);
+ document.getElementById('p5ppiTindakan').value=kv.TindakanOperasi!==undefined?kv.TindakanOperasi:'';
+ document.getElementById('p5ppiKultur').value=kv.HasilKultur!==undefined?kv.HasilKultur:'0';
+ document.getElementById('p5ppiSuhu').value=kv.Suhu!==undefined?kv.Suhu:'36';
+}
+
+// Isi 5 slot antibiotik dari string kolom I mentah. Proses ATOMIK per slot
+// (nama+freq+dosis sekaligus dari token slot yang sama) supaya freq/dosis tidak
+// nyasar tertukar antar slot. Slot tanpa token Nama dikosongkan.
+function p5ApplyAntibiotik(raw){
+ var kv=p5ParseKV(raw);
+ for(var i=1;i<=5;i++){
+   var nama=kv['Antibiotik'+i+'Nama'];
+   document.getElementById('p5abNama'+i).value =nama!==undefined?nama:'';
+   document.getElementById('p5abFreq'+i).value =nama!==undefined?(kv['Antibiotik'+i+'Freq']||''):'';
+   document.getElementById('p5abDosis'+i).value=nama!==undefined?(kv['Antibiotik'+i+'Berat']||''):'';
+ }
+}
 
 function initP5(params){
  if(!p5Ready){
@@ -154,11 +284,76 @@ function initP5(params){
    p5SetSearchDefaults();
    p5Open('', document.getElementById('p5fTgl').value, document.getElementById('p5fShift').value);
  }
+ p5WizUpdateBadge(); // tampilkan/sembunyikan badge sesuai window.WIZ saat ini
 }
 
 function p5SetSearchDefaults(){
  var t=document.getElementById('p5fTgl'); if(!t.value)t.value=p5OpsTgl();
  var s=document.getElementById('p5fShift'); if(!s.value)s.value='Pagi';
+}
+
+// ── Mode berurutan (wizard) — lihat window.WIZ, di-set dari mulaiWizard() Page1.
+// Goretty TIDAK perlu peta savedNomor terpisah (beda dari Damianus): p5Open() di
+// bawah selalu cek ulang ke server (getPaketLaporan) tiap pindah pasien, jadi
+// laporan yang sudah tersimpan otomatis kebuka di mode lihat, bukan dobel.
+function p5WizUpdateBadge(){
+ var el=document.getElementById('p5wiz');
+ if(!el) return;
+ var w=window.WIZ, aktif=!!(w && w.active);
+ // Kunci bilah pencarian/+ Laporan Baru selama wizard aktif -- mencegah user pindah
+ // konteks di tengah alur (bisa bikin p5WizAdvance() salah sasaran).
+ ['p5fTgl','p5fNama','p5fShift','p5cari','p5tambahdata'].forEach(function(id){
+   var e=document.getElementById(id); if(e) e.disabled=aktif;
+ });
+ if(aktif){
+   el.classList.add('show');
+   document.getElementById('p5wiz-info').textContent=
+     'Mode berurutan · Shift '+w.shift+' · pasien '+(w.pos+1)+' dari '+w.all.length;
+   var prevBtn=document.getElementById('p5wiz-prev'), nextBtn=document.getElementById('p5wiz-next');
+   if(prevBtn) prevBtn.disabled=(w.pos<=0);
+   if(nextBtn) nextBtn.disabled=(w.pos>=w.all.length-1);
+ }else{
+   el.classList.remove('show');
+ }
+}
+function p5WizKeluar(){
+ if(window.WIZ) window.WIZ.active=false;
+ p5WizUpdateBadge();
+ toast('Keluar dari mode berurutan.','ok');
+}
+function p5WizGoto(pos){
+ var w=window.WIZ;
+ if(!w || !w.active) return;
+ if(pos<0 || pos>=w.all.length) return;
+ w.pos=pos;
+ p5WizUpdateBadge();
+ document.getElementById('p5fNama').value=w.all[pos];
+ p5Open(w.all[pos], w.hariIni, w.shift);
+}
+function p5WizPrev(){
+ if(window.WIZ) p5WizGoto(window.WIZ.pos-1);
+}
+// Lewati pasien saat ini TANPA menyimpan — pindah ke pasien berikutnya.
+function p5WizSkip(){
+ var w=window.WIZ;
+ if(!w || !w.active) return;
+ if(w.pos>=w.all.length-1){ toast('Sudah di pasien terakhir dalam daftar.','ok'); return; }
+ p5WizGoto(w.pos+1);
+}
+// Dipanggil setelah simpandisheet sukses (laporan baru) ATAU saat duplikat
+// terdeteksi selagi wizard aktif. Lanjut ke pasien berikutnya, atau tutup wizard
+// & kembali ke Page1 kalau yang baru disimpan adalah pasien terakhir dalam daftar.
+function p5WizAdvance(){
+ var w=window.WIZ;
+ if(!w || !w.active) return false;
+ if(w.pos>=w.all.length-1){
+   w.active=false;
+   toast('Mode berurutan selesai — semua laporan shift '+w.shift+' sudah dibuat.','ok');
+   gotoPage('p1');
+   return true;
+ }
+ p5WizGoto(w.pos+1);
+ return true;
 }
 
 // Tanggal operasional (hari berganti pukul 07:00): default & batas atas laporan baru.
@@ -268,12 +463,14 @@ function p5Render(baris){
      tgEl.value=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
    }catch(e){tgEl.value='';}}else{tgEl.value='';}
  }
- document.querySelectorAll('.multi').forEach(function(cb){cb.checked=false;});
+ document.querySelectorAll(P5_CB_SEL).forEach(function(cb){cb.checked=false;});
  if(r[8]&&String(r[8]).length>0){
    String(r[8]).split(';').forEach(function(id){
      var el=document.getElementById(String(id).trim());if(el)el.checked=true;
    });
  }
+ p5ApplyPpiFields(r[8]);
+ p5ApplyAntibiotik(r[8]);
  if(r[1]&&tgEl)document.getElementById('p5fTgl').value=tgEl.value;
  document.getElementById('p5fShift').value=String(r[2]||'')||'Pagi';
  p5EnsureNamaOption(String(r[4]||''));
@@ -283,7 +480,7 @@ function p5Render(baris){
 // Mode LIHAT
 function p5Kunci(){
  P5_LOCK.concat(P5_NEW_EDIT).forEach(function(id){var el=document.getElementById(id);if(el)el.disabled=true;});
- document.querySelectorAll('.multi').forEach(function(cb){cb.disabled=true;});
+ document.querySelectorAll(P5_CB_SEL).forEach(function(cb){cb.disabled=true;});
  document.getElementById('p5pasien').hidden=true;
  document.getElementById('p5namahidden').hidden=false;
  if(p5Nama&&!document.getElementById('p5namahidden').value)
@@ -298,8 +495,8 @@ function p5Kunci(){
 // Mode EDIT laporan yang sudah ada (identitas tetap terkunci)
 function p5Perbarui(){
  P5_LOCK.forEach(function(id){var el=document.getElementById(id);if(el)el.disabled=true;});
- ['p5bed','p5diagnosis','p5laporan'].forEach(function(id){document.getElementById(id).disabled=false;});
- document.querySelectorAll('.multi').forEach(function(cb){cb.disabled=false;});
+ P5_EDIT_EXTRA.forEach(function(id){document.getElementById(id).disabled=false;});
+ document.querySelectorAll(P5_CB_SEL).forEach(function(cb){cb.disabled=false;});
  document.getElementById('p5simpan').hidden=false;
  document.getElementById('p5update').hidden=true;
  p5ReqShow(false);
@@ -327,16 +524,18 @@ function p5SetupBaru(nama,tgl,shift,dataPasien,sebelumnya){
  var sb=sebelumnya||{};
  if(sb.bed)document.getElementById('p5bed').value=sb.bed;
  if(sb.diagnosis)document.getElementById('p5diagnosis').value=sb.diagnosis;
- document.querySelectorAll('.multi').forEach(function(cb){cb.checked=false;});
+ document.querySelectorAll(P5_CB_SEL).forEach(function(cb){cb.checked=false;});
  if(sb.alatmedik){
    String(sb.alatmedik).split(';').forEach(function(id){
      var cb=document.getElementById(String(id).trim());if(cb)cb.checked=true;
    });
  }
+ p5ApplyPpiFields(sb.alatmedik);
+ p5ApplyAntibiotik(sb.alatmedik);
  // Kunci identitas, buka field yang boleh diisi
  P5_LOCK.forEach(function(id){var el=document.getElementById(id);if(el)el.disabled=true;});
  P5_NEW_EDIT.forEach(function(id){var el=document.getElementById(id);if(el)el.disabled=false;});
- document.querySelectorAll('.multi').forEach(function(cb){cb.disabled=false;});
+ document.querySelectorAll(P5_CB_SEL).forEach(function(cb){cb.disabled=false;});
  document.getElementById('p5simpan').hidden=false;
  document.getElementById('p5update').hidden=true;
  p5ReqShow(true);
@@ -359,6 +558,13 @@ function p5Simpan(){
      var res;try{res=JSON.parse(raw);}catch(e){res=null;}
      if(!res||!res.ok){
        if(res&&res.alasan==='duplikat'){
+         // Wizard aktif: pasien ini rupanya sudah dilaporkan (mis. staf lain) —
+         // lewati saja, jangan hentikan alur dengan banner error.
+         if(ui.isBaru && window.WIZ && window.WIZ.active){
+           toast('Pasien ini sudah ada laporannya (No. '+res.nomor+') — dilewati.','ok');
+           p5WizAdvance();
+           return;
+         }
          toast('Laporan untuk pasien+tanggal+shift ini sudah ada (No. '+res.nomor+'). Membuka laporan tersebut…','err');
          p5LoadByNomor(res.nomor);
        }else if(res&&res.alasan==='shift_belum'){
@@ -380,6 +586,7 @@ function p5Simpan(){
      toast('Data berhasil disimpan (No. '+res.nomor+').','ok');
      loaded.p1=false;
      try{localStorage.setItem('ldd_dataChanged',String(Date.now()));}catch(e){}
+     if(ui.isBaru && window.WIZ && window.WIZ.active) p5WizAdvance();
    })
    .withFailureHandler(function(e){loading(false);btn.disabled=false;errH(e);})
    .simpandisheet(ui);
@@ -402,8 +609,20 @@ function p5Kumpul(){
  ui.umur=document.getElementById('p5umur').value;
  ui.harike=document.getElementById('p5harike').value;
  ui.bed=document.getElementById('p5bed').value;
- ui.alatmedik=Array.from(document.querySelectorAll('.multi:checked'))
-   .map(function(e){return e.value;}).join(';');
+ var tokens=Array.from(document.querySelectorAll(P5_CB_SEL_CHECKED)).map(function(e){return e.value;});
+ // Isian PPI singkat SELALU ditulis (walau kosong/default) supaya parsing baliknya konsisten.
+ tokens.push('TindakanOperasi='+p5PpiEsc(document.getElementById('p5ppiTindakan').value));
+ tokens.push('HasilKultur='+p5PpiEsc(document.getElementById('p5ppiKultur').value||'0'));
+ tokens.push('Suhu='+p5PpiEsc(document.getElementById('p5ppiSuhu').value||'36'));
+ // Antibiotik: slot tanpa Nama TIDAK ditulis sama sekali (kolom I tak membengkak percuma).
+ for(var abI=1;abI<=5;abI++){
+   var abNama=document.getElementById('p5abNama'+abI).value;
+   if(!abNama) continue;
+   tokens.push('Antibiotik'+abI+'Nama='+p5PpiEsc(abNama));
+   tokens.push('Antibiotik'+abI+'Freq='+p5PpiEsc(document.getElementById('p5abFreq'+abI).value));
+   tokens.push('Antibiotik'+abI+'Berat='+p5PpiEsc(document.getElementById('p5abDosis'+abI).value));
+ }
+ ui.alatmedik=tokens.join(';');
  return ui;
 }
 
@@ -415,13 +634,15 @@ function p5Bersih(){
  ['p5dinas','p5pj','p5pp','p5pasien','p5bed'].forEach(function(id){
    var el=document.getElementById(id);if(el)el.value='';
  });
- document.querySelectorAll('.multi').forEach(function(cb){cb.checked=false;});
+ document.querySelectorAll(P5_CB_SEL).forEach(function(cb){cb.checked=false;});
+ p5ApplyPpiFields('');
+ p5ApplyAntibiotik('');
 }
 
 function p5KosongkanTampilan(hint){
  p5Bersih();
  P5_LOCK.concat(P5_NEW_EDIT).forEach(function(id){var el=document.getElementById(id);if(el)el.disabled=true;});
- document.querySelectorAll('.multi').forEach(function(cb){cb.disabled=true;});
+ document.querySelectorAll(P5_CB_SEL).forEach(function(cb){cb.disabled=true;});
  document.getElementById('p5simpan').hidden=true;
  document.getElementById('p5update').hidden=true;
  p5ReqShow(false);

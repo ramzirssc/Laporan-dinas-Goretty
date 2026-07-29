@@ -25,28 +25,50 @@
       --shadow:0 2px 8px rgba(30,60,120,.08),0 1px 2px rgba(30,60,120,.05);
       --shadow-lg:0 8px 28px rgba(30,60,120,.13);
       --topbar-h:52px;
+      --thead-grad:linear-gradient(135deg,#1e3a8a,#2563eb);
     }
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;min-height:100vh}
-    .topbar{background:var(--surface);border-bottom:1px solid var(--border);
+    .topbar{background:var(--thead-grad);border-bottom:1px solid rgba(0,0,0,.08);
       box-shadow:var(--shadow);position:sticky;top:0;z-index:200;height:var(--topbar-h)}
     .topbar-inner{display:flex;align-items:center;padding:0 14px;height:100%;gap:10px}
-    .topbar-logo{height:34px;width:auto;flex-shrink:0;display:block}
-    .logo-text .rs{font-size:13px;font-weight:700;color:#c0392b;line-height:1.2;white-space:nowrap}
-    .logo-text .unit{font-size:11px;color:var(--muted);font-family:var(--serif);font-style:italic;white-space:nowrap}
-    .divider-v{width:1px;height:28px;background:var(--border);flex-shrink:0}
+    .topbar-logo{height:53px;width:auto;flex-shrink:0;display:block}
+    .logo-text .rs{font-size:13px;font-weight:700;color:#fff;line-height:1.2;white-space:nowrap}
+    .logo-text .unit{font-size:11px;color:rgba(255,255,255,.75);font-family:var(--serif);font-style:italic;white-space:nowrap}
+    .divider-v{width:1px;height:28px;background:rgba(255,255,255,.25);flex-shrink:0}
     .tabs{display:flex;align-items:stretch;height:100%;gap:0;overflow-x:auto;flex:1;
       scrollbar-width:none;-ms-overflow-style:none}
     .tabs::-webkit-scrollbar{display:none}
+    /* Perangkat mouse/trackpad (desktop & laptop): tak bisa swipe horizontal, jadi tab
+       dibungkus ke >1 baris alih-alih di-scroll. Tinggi topbar mengikuti jumlah baris;
+       --topbar-h disinkronkan via ResizeObserver (lihat script). */
+    @media(pointer:fine){
+      .topbar{height:auto;min-height:52px}
+      .topbar-inner{height:auto;min-height:52px;padding-top:4px;padding-bottom:4px}
+      .tabs{height:auto;overflow:visible;flex-wrap:wrap;align-content:center;row-gap:2px}
+      .tab-btn{min-height:36px}
+    }
     .tab-btn{background:none;border:none;padding:0 13px;font-family:var(--sans);font-size:12.5px;
-      font-weight:500;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;
+      font-weight:500;color:rgba(255,255,255,.75);cursor:pointer;border-bottom:3px solid transparent;
       transition:color .18s,border-color .18s;white-space:nowrap;flex-shrink:0;
       min-height:44px;display:flex;align-items:center}
-    .tab-btn:hover{color:var(--blue)}
-    .tab-btn.active{color:var(--blue);border-bottom-color:var(--blue);font-weight:600}
+    .tab-btn:hover{color:#fff}
+    .tab-btn.active{color:#fff;border-bottom-color:#fff;font-weight:600}
     .topbar-info{flex-shrink:0;text-align:right;line-height:1.3}
-    .topbar-info .tgl{font-size:12px;font-weight:600;color:var(--blue-dk);white-space:nowrap}
-    .topbar-info .dok{font-size:11px;color:var(--muted);white-space:nowrap}
+    .topbar-info .tgl{font-size:12px;font-weight:600;color:#fff;white-space:nowrap}
+    .topbar-info .dok{font-size:11px;color:rgba(255,255,255,.8);white-space:nowrap}
+    .topbar-info .psn{font-size:11px;color:rgba(255,255,255,.8);white-space:nowrap}
+    .topbar-info .wiz{font-size:11px;color:#ffe9a8;font-weight:600;white-space:nowrap;
+      margin-top:1px;display:none}
+    .topbar-info .wiz.show{display:block}
+    .tbar-btnrow{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;margin-top:5px}
+    .tbar-refresh{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);
+      color:#fff;border-radius:var(--radius-sm);
+      padding:3px 9px;font-size:10.5px;font-weight:600;cursor:pointer;
+      display:inline-flex;align-items:center;gap:4px;transition:background .18s;white-space:nowrap}
+    .tbar-refresh:hover:not(:disabled){background:rgba(255,255,255,.3)}
+    .tbar-refresh:disabled{opacity:.45;cursor:not-allowed}
+    .tbar-refresh-icon{display:inline-block;font-style:normal}
     .page-content{padding:14px 14px 40px}
     .page-section{display:none}
     .page-section.active{display:block}
@@ -113,19 +135,17 @@
     .check-item:has(input:checked){background:var(--blue-lt);border-color:var(--blue);color:var(--blue-dk);font-weight:600}
     .check-item:has(input:disabled){opacity:.5;cursor:default}
     .check-item input{width:13px;height:13px;accent-color:var(--blue);cursor:pointer;flex-shrink:0;margin:0}
-    /* Laptop & desktop (>=768px): nav bar membungkus jadi 2 baris agar semua tab
-       selalu terlihat tanpa perlu geser horizontal (ramah mouse; scrollbar disembunyikan).
-       Mobile (<=767px) tetap 1 baris + scroll sentuh (lihat base .tabs). */
-    @media(min-width:768px){
-      .topbar{height:auto;min-height:var(--topbar-h)}
-      .topbar-inner{height:auto;min-height:var(--topbar-h);padding-top:5px;padding-bottom:5px}
-      .tabs{flex-wrap:wrap;overflow-x:visible;height:auto;align-content:center;row-gap:4px}
-      .tab-btn{min-height:34px}
-    }
     @media(max-width:1023px){.g4{grid-template-columns:repeat(2,1fr)}.tab-btn{padding:0 10px;font-size:12px}}
     @media(max-width:767px){
       .page-content{padding:10px 10px 40px}.logo-text .unit{display:none}
-      .topbar-info{display:none}.divider-v:last-of-type{display:none}
+      .topbar{height:auto}
+      .topbar-inner{flex-wrap:wrap;height:auto;min-height:52px;padding:6px 10px}
+      .divider-v{display:none}
+      .tabs{order:3;width:100%;margin-top:4px}
+      .topbar-info{order:2;margin-left:auto;padding:5px 9px}
+      .topbar-info .dok,.topbar-info .psn,.topbar-info .wiz{font-size:9.5px}
+      .tbar-btnrow{justify-content:flex-end}
+      .tbar-refresh{font-size:9.5px;padding:3px 7px}
       .tab-btn{padding:0 9px;font-size:11px}.g4{grid-template-columns:repeat(2,1fr)}
       .g2{grid-template-columns:1fr}.card{padding:12px 13px}
       #toasts{right:10px;bottom:10px}.toast{min-width:190px;max-width:calc(100vw - 20px)}
@@ -158,6 +178,14 @@
     <div class="topbar-info">
       <div class="tgl" id="tbar-tgl">—</div>
       <div class="dok" id="tbar-dok">Dokter jaga: —</div>
+      <div class="psn" id="tbar-n">— pasien hari ini</div>
+      <div class="wiz" id="tbar-wiz-info"></div>
+      <div class="tbar-btnrow">
+        <button class="tbar-refresh" id="tbar-refresh-btn" onclick="refreshP1()">
+          <span class="tbar-refresh-icon" id="tbar-refresh-icon">↻</span> Refresh
+        </button>
+        <button class="tbar-refresh" id="tbar-wiz-btn" onclick="mulaiWizard()" disabled>Mulai Laporan Shift Ini</button>
+      </div>
     </div>
   </div>
 </div>
@@ -209,6 +237,35 @@ function toast(msg,type){
 }
 function errH(err){loading(false);toast(err&&err.message?err.message:String(err),'err');}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+// Token mentah kolom I (alat medik/PPI/DPJP/antibiotik) -> daftar label chip ringkas.
+// Token Key=Value (isian PPI singkat, slot antibiotik) sengaja disembunyikan dari
+// chip ringkas ini -- rinciannya ditampilkan lewat editor Page3, bukan di sini.
+var P_CHIP_LABELS={DpjpVisit14:'DPJP visit <14.00'};
+function chipLabelFilter(tokens){
+  return tokens.filter(function(t){return t.indexOf('=')<0;})
+    .map(function(t){return P_CHIP_LABELS[t]||t;});
+}
+// Bikin gradient header tabel terlihat 1 kesatuan menyatu kiri->kanan, bukan
+// per-kolom. Trik: background-size = lebar total baris, background-position =
+// -offset kumulatif tiap sel -- tiap sel jadi "jendela" ke satu gradient raksasa
+// yang sama, sehingga tersambung mulus lintas kolom (termasuk kolom frozen/sticky).
+// WAJIB dipanggil SETELAH tabel benar-benar display:block/table, bukan saat masih
+// display:none (offsetWidth semua sel akan 0 dan fungsi diam-diam tidak berefek).
+function applyRowGradient(row){
+  if(!row||!row.children||!row.children.length) return;
+  var cells=row.children,total=0,i;
+  for(i=0;i<cells.length;i++) total+=cells[i].offsetWidth;
+  if(!total) return;
+  var offset=0;
+  for(i=0;i<cells.length;i++){
+    var c=cells[i];
+    c.style.setProperty('background-image','var(--thead-grad)','important');
+    c.style.setProperty('background-size',total+'px 100%','important');
+    c.style.setProperty('background-position',(-offset)+'px 0','important');
+    c.style.setProperty('background-repeat','no-repeat','important');
+    offset+=c.offsetWidth;
+  }
+}
 function ymd(d){return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
 // Tanggal operasional dari server (hari berganti pukul 07:00). Dipakai Page5 sebagai
 // default & batas atas tanggal laporan baru. Fallback ke tanggal kalender browser.
@@ -245,6 +302,22 @@ document.addEventListener('DOMContentLoaded',function(){
     initP1();loaded.p1=true;
   }
 });
+
+// Sinkronkan --topbar-h dengan tinggi topbar sebenarnya. Di layar mouse/trackpad
+// nav bisa membungkus ke >1 baris (lihat @media(min-width:768px) di atas), sehingga
+// topbar lebih tinggi dari 52px. Tanpa ini, calc(100vh - var(--topbar-h) - …) di
+// tiap halaman meleset -> area konten kepanjangan / scroll ganda.
+(function(){
+  var tb=document.querySelector('.topbar');
+  if(!tb)return;
+  function syncTopbarH(){
+    var h=tb.offsetHeight;
+    if(h>0) document.documentElement.style.setProperty('--topbar-h',h+'px');
+  }
+  syncTopbarH();
+  if(window.ResizeObserver){new ResizeObserver(syncTopbarH).observe(tb);}
+  else{window.addEventListener('resize',syncTopbarH);}
+})();
 </script>
 </body>
 </html>

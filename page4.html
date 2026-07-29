@@ -2,7 +2,7 @@
 <style>
   .p4d-outer{display:flex;flex-direction:column;height:calc(100vh - var(--topbar-h) - 28px)}
   .p4d-top{flex-shrink:0}
-  .p4d-search-bar{background:#1e3f62;padding:10px 14px;
+  .p4d-search-bar{background:var(--thead-grad);padding:10px 14px;
     border-radius:var(--radius-lg) var(--radius-lg) 0 0;
     display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .p4d-search-label{font-size:11px;font-weight:700;text-transform:uppercase;
@@ -68,7 +68,7 @@
     box-shadow:var(--shadow);padding:12px 14px}
   .p4d-patient-sec{margin-bottom:18px;border-radius:var(--radius-lg);
     overflow:hidden;box-shadow:var(--shadow)}
-  .p4d-patient-hdr{background:#1e3f62;color:#fff;padding:9px 14px;
+  .p4d-patient-hdr{background:var(--thead-grad);color:#fff;padding:9px 14px;
     display:flex;align-items:center;justify-content:space-between}
   .p4d-pnm{font-family:var(--serif);font-size:13px;font-weight:600;font-style:italic}
   .p4d-pcnt{font-size:11px;opacity:.75;background:rgba(255,255,255,.15);
@@ -397,7 +397,7 @@ function p4dBuildSeksi(namaP, laps) {
   laps.forEach(function(r){
     var sc=(r.shift||'').toLowerCase();
     var cls='p4d-'+(sc==='pagi'?'pagi':sc==='sore'?'sore':'malam');
-    var alat=(r.alatmedik||'').split(';').filter(Boolean);
+    var alat=chipLabelFilter((r.alatmedik||'').split(';').filter(Boolean));
     var alatH=alat.length?'<div class="p4d-chips">'+alat.map(function(a){return'<span class="p4d-chip">'+esc(a)+'</span>';}).join('')+'</div>':'';
     html+='<div class="p4d-card '+cls+'">'
       +'<div class="p4d-ch"><div class="p4d-ch-left">'

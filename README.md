@@ -22,9 +22,9 @@ Tujuan utama: pencatatan untuk **audit, surveilans, penelitian, dan statistik** 
 | `assets/logo_carolus_base64.txt` | Sumber logo RS St. Carolus (data URI WebP base64). File repo saja — **tidak** di-`push` clasp (ekstensi tak dikenal). Isinya di-*inline* ke `src` `<img class="topbar-logo">` di `index.html`. Diambil dari proyek Endoskopi. |
 | `page1.html` | Daftar pasien hari ini. Klik tombol shift kosong → **buka tab baru** ke Page5 (laporan baru). Klik badge bernomor → buka laporan tsb. |
 | `page2.html` | Input/keluar pasien (embed Google Form) |
-| `page3.html` | Lihat laporan (tabel, filter, edit inline diagnosis+laporan, tombol Refresh & Cetak PDF) |
+| `page3.html` | Lihat laporan (tabel, filter, **edit inline gabungan** diagnosis+laporan+alat medik+PPI+antibiotik+DPJP visit lewat satu tombol Edit/Simpan per baris — lihat §8, tombol Refresh & Cetak PDF) |
 | `page4.html` | Operan dinas (kartu per pasien; cari seluruh riwayat; tombol Refresh) |
-| `page5.html` | Tulis/lihat/edit laporan (form utama). Pencarian berbasis **tanggal + nama + shift**. |
+| `page5.html` | Tulis/lihat/edit laporan (form utama): Waktu&Petugas, Data Pasien, Alat Medik, DPJP Visit, PPI, Antibiotik, Diagnosis, Isi Laporan (lihat §6, §2.1). Pencarian berbasis **tanggal + nama + shift**, atau **mode berurutan** (wizard) dari Page1 — lihat §6.1. |
 | `page7.html` | Permintaan dinas: form **Ajukan + Batalkan** (native) + tabel jawaban read-only; **baca & tulis** spreadsheet eksternal Form responses |
 | `page8.html` | Statistik (diagnosis/alat dari ws1; metrik pasien dari sheet Merge) |
 | `page9.html` | **Logbook Perawat Goretty** (baca spreadsheet eksternal, read-only) |
@@ -37,9 +37,13 @@ Tujuan utama: pencatatan untuk **audit, surveilans, penelitian, dan statistik** 
 
 Setiap halaman di-include ke `index.html` sebagai template dan punya fungsi `initPN(params)` yang dipanggil router (`gotoPage`) saat halaman dibuka.
 
-> **Logo topbar.** Logo RS St. Carolus tampil di ujung kiri topbar, sebelum blok teks "RS St. Carolus / IPI — Goretty" (`<img class="topbar-logo">`). Sumbernya data URI WebP base64 yang di-*inline* langsung ke atribut `src` (bukan file yang diserve terpisah — HtmlService tak melayani gambar statis lewat URL). Master datanya di `assets/logo_carolus_base64.txt`; bila logo diganti, perbarui file itu lalu inline ulang ke `src`. Base64 aman di atribut `src` berkutip ganda (tak ada karakter kutip di dalamnya).
+> **Logo topbar.** Logo RS St. Carolus tampil di ujung kiri topbar (`height:53px`), sebelum blok teks "RS St. Carolus / IPI — Goretty" (`<img class="topbar-logo">`). Sumbernya data URI WebP base64 yang di-*inline* langsung ke atribut `src` (bukan file yang diserve terpisah — HtmlService tak melayani gambar statis lewat URL). Master datanya di `assets/logo_carolus_base64.txt`; bila logo diganti, perbarui file itu lalu inline ulang ke `src`. Base64 aman di atribut `src` berkutip ganda (tak ada karakter kutip di dalamnya). Ukuran & warna topbar (§ tema di bawah) disamakan dengan proyek Damianus.
 
-> **Nav bar membungkus (responsif).** Ada 10 tombol tab, terlalu banyak untuk satu baris di banyak lebar layar. **Laptop & desktop (`@media(min-width:768px)`):** `.tabs` memakai `flex-wrap:wrap` sehingga tab **membungkus jadi 2 baris** dan semua tab selalu terlihat tanpa perlu geser — penting karena scrollbar horizontal disembunyikan (`scrollbar-width:none`), jadi di desktop bermouse tab yang tersembunyi tak terjangkau. Topbar tumbuh mengikuti isi (`height:auto;min-height:var(--topbar-h)`). **Mobile (`<=767px`):** tetap **satu baris** dengan `overflow-x:auto` (base `.tabs`) — geser sentuh sudah nyaman dan menghemat tinggi vertikal. Aturan wrap ada di `<style>` `index.html` (blok `@media(min-width:768px)`); jangan hapus `overflow-x:auto` pada base `.tabs` (dipakai mobile).
+> **Tema warna topbar & header tabel.** `--thead-grad:linear-gradient(135deg,#1e3a8a,#2563eb)` di `:root` (`index.html`) dipakai untuk `.topbar` **dan** semua header tabel (`<th>`) di tiap halaman (page1/3/7/9 dst) — satu gradasi biru menyatu, bukan warna solid `#1e3f62` lama. **Header tabel** dirender lewat fungsi global `applyRowGradient(row)` (`index.html`) yang dipanggil **setelah** tabel `display:block/table` (bukan saat masih `display:none`, atau `offsetWidth` semua sel = 0 dan gradasinya diam-diam tak berefek) — triknya: `background-size` = lebar total baris, `background-position` = -offset kumulatif tiap sel, supaya gradasinya tersambung mulus lintas kolom (termasuk kolom frozen/sticky), bukan pita berulang per kolom.
+
+> **Nav bar membungkus (responsif) + sinkron tinggi topbar.** Ada 10 tombol tab, terlalu banyak untuk satu baris di banyak lebar layar. **Perangkat mouse/trackpad (`@media(pointer:fine)`, bukan lagi berdasar lebar layar):** `.tabs` memakai `flex-wrap:wrap` sehingga tab **membungkus jadi 2 baris** dan semua tab selalu terlihat tanpa perlu geser — penting karena scrollbar horizontal disembunyikan (`scrollbar-width:none`), jadi di desktop bermouse tab yang tersembunyi tak terjangkau. **Sentuh (mobile/tablet):** tetap **satu baris** dengan `overflow-x:auto` (base `.tabs`) — geser sentuh sudah nyaman dan menghemat tinggi vertikal. Karena topbar bisa tumbuh >1 baris, sebuah IIFE di akhir `<script>` `index.html` memasang `ResizeObserver` pada `.topbar` yang menyinkronkan custom property `--topbar-h` dengan tinggi topbar **sebenarnya** (`tb.offsetHeight`) — tanpa ini, `calc(100vh - var(--topbar-h) - …)` di tiap halaman (Page1/2/3/4/5/7) meleset dan area konten terpotong/scroll ganda saat topbar 2 baris. Jangan hapus `overflow-x:auto` pada base `.tabs` (dipakai mobile), dan jangan hapus IIFE ResizeObserver itu bila menambah lebih banyak tombol topbar.
+
+> **Topbar-info (kanan atas).** Selain tanggal (`#tbar-tgl`) & dokter jaga (`#tbar-dok`), sekarang juga menampung jumlah pasien hari ini (`#tbar-n`, diisi `page1.html`), status mode berurutan (`#tbar-wiz-info`, lihat §6.1), serta tombol **Refresh** (`refreshP1()`) dan **"Mulai Laporan Shift Ini"** (`mulaiWizard()`) — semua fungsi ini didefinisikan di `page1.html` meski elemennya di `index.html`, karena hanya relevan saat Page1 aktif. Dulu kontrol-kontrol ini ada di header biru lokal Page1 (`.p1h`, sudah dihapus); sekarang disatukan ke topbar global, sama seperti proyek Damianus.
 
 ### Identitas teknis
 - **Spreadsheet utama (terikat):** `17PUDkWDfNS_FDvjZVCA9r_mdul-T8uYNSevCWxfYgpk`
@@ -73,7 +77,7 @@ Indeks 0-based (sesuai hasil `getValues()`):
 | 5 | F | PP | Perawat pelaksana |
 | 6 | G | Diagnosis | Teks diagnosis (diisi user) |
 | 7 | H | Laporan | Isi laporan |
-| 8 | I | AlatMedik | Daftar alat dipisah `;` (mis. `Kateter;Ventilator`) |
+| 8 | I | AlatMedik | Token dipisah `;`: alat medik + PPI + DPJP visit (token telanjang) dicampur dengan isian PPI singkat & antibiotik (`Key=Value`). **Lihat §2.1 untuk format lengkap** — bukan cuma daftar alat lagi sejak fitur PPI/Antibiotik/DPJP visit ditambahkan. |
 | 9 | J | Timestamp | `new Date()` saat simpan |
 | 10 | K | Agama | |
 | 11 | L | Jaminan | |
@@ -85,6 +89,21 @@ Indeks 0-based (sesuai hasil `getValues()`):
 | 17 | R | DiagnosisEdited | **Diisi ArrayFormula di header. Lihat §3.** |
 
 Operasi tulis data laporan menyentuh **17 kolom (A–Q)**. Kolom R diisi formula otomatis dan **tidak pernah** ditulis oleh kode.
+
+### 2.1 Format kolom I (AlatMedik) — token campuran, `;`-separated
+
+Kolom I dipakai bersama oleh 4 konsep, semua digabung jadi **satu string**, dipisah `;`. Setiap token adalah salah satu dari dua bentuk:
+
+**a) Token telanjang** (checkbox) — `id` checkbox **selalu sama persis** dengan `value`-nya (`id===value`). Ini bukan kebetulan: restore checkbox dari token tersimpan mencari elemen lewat `document.getElementById(token)` — kalau `id≠value`, restore gagal total secara diam-diam (tidak error, checkbox cuma kelihatan kosong padahal data benar). **Jangan pernah membuat checkbox baru dengan `id≠value`.**
+- **Alat medik** — id dari `ALAT_LIST` (`code.gs`), kelas CSS `.multi`. Contoh: `Ventilator`, `Doublelumen`, `ArterialLine` (Arterial line), `IVLine` (IV line).
+- **PPI** (Pencegahan & Pengendalian Infeksi) — id dari `PPI_LIST` (`code.gs`), kelas CSS `.ppi` (terpisah dari `.multi` supaya kode bisa membedakan kelompok lewat kelas elemen). 10 item: `VAP, IADP, Plebitis, ISK, IDO, HAP, HAIs, RuamPopokICU (Ruam Popok di ICU), RuamPopokRanap (Ruam Popok di Ruang Rawat), RuamPopokLuarRSSC (Ruam Popok di Luar RSSC)`.
+- **DPJP visit** — token tunggal `DpjpVisit14`, kelas CSS `.dpjp14`. Fakta **harian**: boleh terbawa dari shift ke shift dalam **tanggal yang sama** (Pagi→Sore→Malam, cukup dicentang di shift manapun), tapi **wajib reset lintas hari** — lihat §7.1.
+
+**b) Token `Key=Value`** — isian bebas, **selalu ditulis** walau kosong/default (supaya parsing baliknya konsisten — tak perlu menebak apakah field itu "belum diisi" vs "sengaja kosong"). Nilai bebas **wajib disanitasi** sebelum digabung: ganti `;`→`,` (`p5PpiEsc`/`p3AbEsc`, keduanya `String(s||'').replace(/;/g,',')`) — karena `;` adalah pemisah token utama, membiarkannya lolos akan merusak seluruh string kolom I.
+- **PPI singkat**: `TindakanOperasi=...` (teks bebas, default kosong), `HasilKultur=...` (teks bebas, default `'0'`), `Suhu=...` (angka, default `'36'`).
+- **Antibiotik** — 5 slot, `Antibiotik{1-5}Nama=...` / `Antibiotik{1-5}Freq=...` / `Antibiotik{1-5}Berat=...`. **Nama** = dropdown dari `Lookup!K2:K` (`opsiantibiotik()`, lazy, cache lewat `opsi()`). **Freq** dibakukan **hanya angka 1–10** (`<select>`, bukan teks bebas — tak bisa diisi teks lain). **Berat** (dosis) **teks bebas** (mis. `100 mg`, `200 mg`, `1 gram`) — dosis anak-anak sulit dibakukan ke daftar tetap, jadi cuma jenis antibiotiknya yang dipilih dari daftar baku, dosis & frekuensi bebas/dibatasi manual. **Slot yang Nama-nya kosong TIDAK ditulis sama sekali** (`Antibiotik3Nama=` kosong tidak ditulis ke sheet) — supaya string kolom I tak membengkak percuma & parsing baliknya bersih. Freq/Berat hanya bermakna kalau Nama terisi; parsing balik memprosesnya **atomik per slot** (nama+freq+berat sekaligus dari token slot yang sama) supaya tidak nyasar tertukar antar slot.
+
+**Sumber checklist bersama (1 sumber untuk Page3 & Page5):** `checklistDefsJson()` (`code.gs`) mengembalikan `{alat:[{id,label}], ppi:[{id,label}], antibiotikNama:[...]}` dari `ALAT_LIST`/`PPI_LIST`/`Lookup!K` — dipakai Page3 (`P3_DEFS`, disuntik sekali via `<?!= checklistDefsJson() ?>` saat load, bukan `google.script.run` per klik Edit) supaya menambah 1 alat medik/PPI baru cukup ubah `ALAT_LIST`/`PPI_LIST` di satu tempat.
 
 ---
 
@@ -209,10 +228,20 @@ Mengembalikan JSON:
 
 ### Field yang dikunci saat membuat laporan BARU (mode baru)
 Terkunci (abu-abu, tidak bisa diubah): **Nama, Tanggal, Shift, DPJP, Konsulen Lainnya, Agama, Jaminan, Umur, Hari ke**.
-Bisa diisi/diubah: **PJ, PP, Tempat Tidur, Alat Medik, Diagnosis, Isi Laporan**.
+Bisa diisi/diubah: **PJ, PP, Tempat Tidur, Alat Medik, DPJP Visit, PPI (+suhu/hasil kultur/tindakan operasi), Antibiotik, Diagnosis, Isi Laporan**. Semua checkbox/field ini digabung `p5Kumpul()` jadi satu string `ui.alatmedik` (kolom I) — lihat §2.1 untuk format tokennya.
 
 ### Mode edit laporan existing (tombol "Perbarui Laporan")
-Identitas tetap terkunci; yang bisa diubah: Tempat Tidur, Alat Medik, Diagnosis, Isi Laporan.
+Identitas tetap terkunci; yang bisa diubah: Tempat Tidur, Alat Medik, DPJP Visit, PPI, Antibiotik, Diagnosis, Isi Laporan (`P5_EDIT_EXTRA` di `page5.html`).
+
+### 6.1 Mode berurutan (wizard) — "Mulai Laporan Shift Ini"
+
+Diporting dari proyek Damianus, dipicu dari tombol topbar (§1). Tujuan: bantu petugas membuat laporan baru untuk **semua pasien yang belum dilaporkan** di shift yang sedang buka, satu per satu, berurutan, tanpa harus kembali ke Page1 tiap pasien.
+
+- **`page1.html`** (`p1UpdateWizard`, dipanggil tiap `renderP1`): tentukan shift target = shift **pertama yang buka** (urutan Pagi→Sore→Malam, dari `shiftBuka` yang sama dipakai badge shift kosong, lihat §11) yang **masih ada pasien pending** (belum ada di `sudahAda`). Bisa lebih dari 1 shift buka sekaligus (mis. jam 15:00 Pagi & Sore dua-duanya buka) — makanya diambil yang **masih ada pending**, bukan sekadar shift pertama yang buka. Tombol topbar menampilkan progres (`N/M laporan <shift> selesai`) dan disable bila tak ada target.
+- **`mulaiWizard()`**: set `window.WIZ = {active, shift, hariIni, all:[nama,...], pos:0}` lalu `gotoPage('p5', {isNew:true, namaPasien:all[0], shift, hariIni, wizard:true})`. `all` = daftar tetap urutan pasien (tak berkurang saat lewat/simpan, supaya bisa navigasi maju-mundur); `pos` = indeks pasien yang sedang dibuka.
+- **`page5.html`** (`p5WizUpdateBadge`/`p5WizGoto`/`p5WizPrev`/`p5WizSkip`/`p5WizAdvance`): badge biru (`.p5wiz`) tampil tiap `initP5` bila `window.WIZ.active`, menonaktifkan bilah pencarian/`+ Laporan Baru` (mencegah user pindah konteks di tengah alur) dan menampilkan progres + tombol Sebelumnya/Lewati/Keluar. Setelah `p5Simpan` sukses (laporan baru) atau server balas `duplikat` (pasien ternyata sudah dilaporkan, mis. oleh staf lain) selagi wizard aktif → otomatis lanjut ke pasien berikutnya (`p5WizAdvance`); di pasien terakhir → wizard selesai, `gotoPage('p1')`.
+- **Goretty TIDAK perlu peta `savedNomor` terpisah** (beda dari Damianus): `p5WizGoto(pos)` cukup memanggil `p5Open(nama, hariIni, shift)` biasa — fungsi itu **selalu** cek ulang ke server (`getPaketLaporan`) tiap pindah pasien, jadi laporan yang sudah tersimpan (baik oleh sesi wizard ini atau staf lain) otomatis kebuka di mode lihat, bukan bikin entri baru dobel. Ini penyederhanaan yang dimungkinkan oleh desain `getPaketLaporan` Goretty yang sudah menyatukan cek-existing ke 1 call.
+- **Aman-diinterupsi**: queue (`P1_WIZ_TARGET`/`window.WIZ.all`) dihitung ulang dari data server tiap `renderP1`/`mulaiWizard`, bukan disimpan sebagai state persisten — menutup tab/refresh di tengah wizard tidak merusak data, tinggal klik "Mulai Laporan Shift Ini" lagi.
 
 ---
 
@@ -225,27 +254,42 @@ Urutan shift harian: **Pagi → Sore → Malam**.
 - Buat **Malam** → ambil **Sore** (hari sama)
 - Buat **Pagi** → ambil **Malam** (hari **sebelumnya**)
 
-`_prevShiftData_(nama, tanggal, shift)` (server) → `{diagnosis, alatmedik, bed}`. Membaca ws1 kolom A–Q (Q=Bed). Dipanggil di dalam `getPaketLaporan`.
+`_prevShiftDataFrom_(data, nama, tanggal, shift, tz)` (server, versi murni dari data ws1 A–Q yang sudah dibaca) → `{diagnosis, alatmedik, bed}`. Dipanggil di dalam `getPaketLaporan` (field `sebelumnya`), memakai satu pembacaan ws1 yang sama dengan cek-duplikat (`_cekDuplikatFrom_`) — bukan pembacaan sheet terpisah.
 
 Sisi client (page5, `p5SetupBaru`):
-- Saat masuk mode baru, form dibersihkan lalu **bed/diagnosis/alat diisi dari shift sebelumnya** (bed dari shift sebelumnya menimpa bed default dari ws2).
+- Saat masuk mode baru, form dibersihkan lalu **bed/diagnosis/alat (+PPI/antibiotik/DPJP visit, lihat §7.1) diisi dari shift sebelumnya** (bed dari shift sebelumnya menimpa bed default dari ws2).
 - Berlaku di kedua jalur pembuatan baru: dari Page1 (tab baru) dan dari kontrol pencarian Page5.
 
-> Data shift sebelumnya diambil lewat `getPaketLaporan` (field `sebelumnya` = `_prevShiftData_`). Wrapper lama `getDiagnosisShiftSebelumnya` sudah dihapus (tak dipakai).
+> Wrapper lama `getDiagnosisShiftSebelumnya` sudah dihapus (tak dipakai).
+
+### 7.1 DPJP visit — ikut terbawa seperti alat medik, KECUALI lintas hari
+
+Kolom I (`alatmedik`, §2.1) dibawa **verbatim** dari shift sebelumnya oleh `_prevShiftDataFrom_` — alat medik, PPI, isian singkat, dan antibiotik semuanya otomatis ikut terbawa tanpa logika khusus, sama seperti diagnosis/bed. **DPJP visit (`DpjpVisit14`) adalah satu-satunya pengecualian**, karena ia fakta **harian** (kepatuhan visit DPJP hari itu), bukan sesuatu yang menetap seperti pemakaian alat:
+
+- **Sore←Pagi** dan **Malam←Sore** (shift sebelumnya di **tanggal yang sama**, `prevTgl === tgtTgl`) → token `DpjpVisit14` **ikut terbawa apa adanya** (tidak ada logika khusus, sama seperti alat medik lainnya) — cukup dicentang di shift manapun hari itu, otomatis terbawa ke shift berikutnya hari yang sama.
+- **Pagi←Malam kemarin** (shift sebelumnya **tanggal lain**, `prevTgl !== tgtTgl`) → `_prevShiftDataFrom_` **membuang token `DpjpVisit14`** dari string `alatmedik` yang dikembalikan sebelum diteruskan ke client (`alatmedikKeluar.split(';').filter(t => t.trim()!=='DpjpVisit14')`) — laporan Pagi baru selalu mulai dengan DPJP visit **belum tercentang**, walau shift Malam kemarin sudah dicentang.
+
+Ini murni logika **carry-over saat membuat laporan baru** (Page5). Editor inline Page3 (§8) tidak menyentuh logika ini — di sana DPJP visit tiap baris murni dibaca/ditulis apa adanya dari kolom I baris tersebut.
 
 ---
 
-## 8. Update Inline dari Page3 (`updateLaporan`)
+## 8. Edit Inline Gabungan dari Page3 — SATU tombol per baris
 
-Page3 mengedit **diagnosis (kolom G)** dan **isi laporan (kolom H)** secara inline, **keduanya** tersimpan saat klik Simpan. Tinggi textarea diagnosis = isi laporan, mendekati tinggi baris. Ada tombol **Refresh** di kanan tombol "Cetak PDF" (satu baris).
+Page3 punya **satu** pasang tombol Edit/Simpan/Batal per baris laporan (kolom Nomor) yang mengedit **sekaligus**: Diagnosis (G), Isi Laporan (H), **dan** Alat Medik/PPI/Antibiotik/DPJP visit (I, format §2.1). Klik Edit membuka **langsung** ketiga area (kolom Pasien → editor alat/PPI/antibiotik, kolom Diagnosis & Laporan → textarea, kolom DPJP & Konsulen → checkbox DPJP visit) tanpa sub-tombol Edit lain di dalamnya.
 
-`updateLaporan(nomor, isiLaporan, diagnosis)`:
-- Cari baris via `_cariRowByNomor_`; jika tidak ketemu → `{ok:false, alasan:'tidak_ditemukan'}`.
-- Tulis kolom 8 (H) = isiLaporan.
-- Tulis kolom 7 (G) = diagnosis **hanya bila `diagnosis !== undefined && !== null`**.
-- Kembalikan `{ok:true, nomor}`.
+**Penempatan DPJP visit disengaja terpisah dari editor Alat Medik/PPI/Antibiotik** — statusnya (badge merah "Belum" / abu-abu "Sudah", **selalu tampil** walau tak sedang diedit) ditampilkan di kolom **DPJP & Konsulen**, bukan digabung ke kolom Pasien, karena secara konsep DPJP visit adalah kepatuhan harian DPJP, bukan bagian dari perangkat/infeksi pasien. Token `DpjpVisit14`-nya tetap tersimpan di string kolom I yang sama (lihat §2.1) — pemisahan ini murni tampilan, checkbox-nya (`p3DpjpEditHtml`) dan checkbox alat/PPI (`p3BuildEditorHtml`) sengaja pakai **id yang sama** (`p3ed-<nomor>-dpjp14`) supaya `p3GatherAlatMedik` bisa mengumpulkannya jadi satu string tanpa peduli di kolom mana elemennya dirender.
 
-> Tanda tangan **3-argumen** wajib dipertahankan (versi lama 2-argumen → diagnosis tidak tersimpan).
+### Alur klien (`page3.html`)
+- `p3ParseAlat(raw)` — urai string kolom I mentah jadi data terstruktur (`{alatIds, ppiIds, dpjp14, tindakan, kultur, suhu, antibiotik:{1:{Nama,Freq,Berat},...}, extra}`). Token yang tak dikenal (mis. alat lama yang sudah dihapus dari `ALAT_LIST`) disimpan di `extra` dan **selalu ditulis balik** saat Simpan (`p3GatherAlatMedik`) — supaya kolom I yang di-replace-penuh tidak diam-diam kehilangan data lama yang tak lagi dikenali daftar checklist saat ini.
+- `p3StartEditRow(nomor)` — bangun editor (`p3BuildEditorHtml`, Alat Medik + PPI + Antibiotik) di kolom Pasien, checkbox DPJP (`p3DpjpEditHtml`) di kolom DPJP & Konsulen, textarea di kolom Diagnosis/Laporan.
+- `p3GatherAlatMedik(nomor)` — kumpulkan SEMUA (checkbox alat medik + DPJP + PPI + isian singkat + antibiotik) jadi **satu string kolom I**, termasuk token `extra` yang dijaga tetap utuh.
+- `p3SaveRow(nomor)` — kirim **2 panggilan server** dari **satu** klik Simpan: `updateLaporan(nomor, laporan, diagnosis)` (kolom G/H) dan `updateAlatMedik(nomor, alatMedikBaru)` (kolom I, **replace penuh**, bukan splice sebagian). Aman dari race condition karena keduanya menyentuh kolom **berbeda** (G/H vs I) dan berasal dari klik yang sama — bukan dua aksi user independen yang bisa saling menimpa (itulah yang justru dihindari dengan menggabung SEMUA isi kolom I jadi satu string sebelum dikirim, alih-alih menulisnya lewat 2 panggilan terpisah yang sama-sama menyentuh kolom I). Klien menunggu **kedua** panggilan selesai (`pending` counter) baru merender ulang tampilan & menampilkan toast.
+- `p3CancelEditRow(nomor)` — batalkan tanpa menyimpan, kembali ke tampilan ringkas dari data `p3c` (tanpa fetch ulang server).
+
+### Server
+- `updateLaporan(nomor, isiLaporan, diagnosis)` — cari baris via `_cariRowByNomor_`; tulis kolom 8 (H) = isiLaporan; kolom 7 (G) = diagnosis **hanya bila `diagnosis !== undefined && !== null`**. Tanda tangan **3-argumen** wajib dipertahankan (versi lama 2-argumen → diagnosis tidak tersimpan).
+- `updateAlatMedik(nomor, alatMedikBaru)` — cari baris via `_cariRowByNomor_`; tulis kolom 9 (I) = `String(alatMedikBaru||'')` (replace penuh). Keduanya membersihkan cache `['p1_data','init_data']` dan selalu mengembalikan JSON string `{ok:true/false, ...}`.
+- **1 sumber checklist untuk Page3 & Page5**: `checklistDefsJson()` — lihat §2.1.
 
 ---
 
@@ -293,13 +337,15 @@ var DIAGNOSIS_LIST = [
   'pertusis','bronkiolitis','anemia'
 ];
 var ALAT_LIST = [
-  'CAPD','Chemoport','Cimino','CPAP','CRRT','CVC',
-  'Doublelumen|Double lumen HD','Drain','Facemask','HFNC','ICON','Kateter',
+  'ArterialLine|Arterial line','CAPD','Chemoport','Cimino','CPAP','CRRT','CVC',
+  'Doublelumen|Double lumen HD','Drain','Facemask','HFNC','ICON','IVLine|IV line','Kateter',
   'Nasalkanul','Nefrostomi','NGT','NIV','PICC',
   'Trakeostomi','Triplelumen|Triple lumen HD','Umbicath','Ventilator','WSD'
 ];
 ```
 > Pencocokan diagnosis bersifat substring (mis. `rd` bisa cocok dalam `ards`). Bila perlu presisi, ubah ke pencocokan per-kata.
+>
+> `ALAT_LIST` dipakai bersama oleh statistik Page8 **dan** checklist Alat Medik Page3/Page5 (`checklistDefsJson`, `htmlCheckbox`, §2.1) — menambah 1 alat medik baru harus konsisten di ketiga tempat (`ALAT_LIST` top-level di sini, `htmlCheckbox()` dekat awal `code.gs`; keduanya duplikat literal array yang sama, belum disatukan jadi 1 sumber). `PPI_LIST` (10 item, §2.1) hanya dipakai checklist PPI, **tidak** ikut statistik Page8.
 
 ---
 
@@ -348,7 +394,7 @@ Target hardcode: `{ I:80, II:80, III:75, IV:80, V:43 }`. PK number: `{ I:1..V:5 
 
 ## 11. Halaman Lain (ringkas)
 
-- **Page1** — daftar pasien hari ini (`getDataPage1`, cache `p1_data` 60 detik). `sudahAda` memetakan `(nama|shift)`→nomor laporan untuk **hari operasional** (lihat di bawah). `shiftBuka` menandai shift yang jam dinasnya belum dimulai → tombol shift kosong dirender **nonaktif** (`.bs-off`); badge bernomor tetap bisa diklik. Klik shift kosong (aktif) → `tulisLaporan()` membuka **tab baru** ke `?p=5&nw=1&nm=&sh=&tg=` (fallback `gotoPage` mode baru). `invalidateP1Cache()` untuk Refresh.
+- **Page1** — daftar pasien hari ini (`getDataPage1`, cache `p1_data` 60 detik). `sudahAda` memetakan `(nama|shift)`→nomor laporan untuk **hari operasional** (lihat di bawah). `shiftBuka` menandai shift yang jam dinasnya belum dimulai → tombol shift kosong dirender **nonaktif** (`.bs-off`); badge bernomor tetap bisa diklik. Klik shift kosong (aktif) → `tulisLaporan()` membuka **tab baru** ke `?p=5&nw=1&nm=&sh=&tg=` (fallback `gotoPage` mode baru). `invalidateP1Cache()`/`refreshP1()` untuk Refresh (tombolnya kini di topbar, §1). `shiftBuka`+`sudahAda`+daftar pasien yang sama juga dipakai `p1UpdateWizard` untuk mode berurutan (§6.1).
 - **Page3** — `getLaporan(filter)` (default 3 hari terakhir); `getNamaPasienDalamRentang(tm,ta)`; edit inline via `updateLaporan` (§8); Refresh & Cetak PDF.
   > `getNamaPasienDalamRentang` membaca **500 baris terakhir** ws1 (`startRow = ws1Last - maxRows + 1`), sama seperti `getLaporan` — **bukan** dari baris 2. Versi lama membaca 500 baris dari baris 2 (data tertua), sehingga untuk sheet besar dropdown "Nama Pasien" tak pernah mencapai tanggal terkini → dropdown selalu kosong (hanya "— Semua —").
 - **Page4** — `getDataPage4`, `getAllLaporanPasien`, `cariSemuaNamaPasien`; tombol Refresh muat ulang tampilan aktif. Payload "pasien hari ini" (semua pasien, 6 laporan/pasien) di-**cache klien** (`p4dHariData`): ganti pilihan nama di dropdown me-render dari cache **tanpa server call**. Jalur keluar-mode-search & Refresh tetap fetch.
@@ -361,7 +407,7 @@ Target hardcode: `{ I:80, II:80, III:75, IV:80, V:43 }`. PK number: `{ I:1..V:5 
 `tanggalOperasional_(tz)`: hari operasional mengacu pada **hari operasional**, bukan tanggal kalender. Hari berganti **pukul 07:00** (zona waktu skrip): sebelum jam 7 → masih dihitung **hari sebelumnya**; mulai 07:00 → tanggal hari ini.
 - Contoh: 3 Juni 02:00 → badge Page1 masih milik 2 Juni (laporan kemarin tetap tampil, mis. `#10000 pagi`). 3 Juni 07:00 → badge kosong (siap laporan baru).
 - Tanggal operasional ini diteruskan ke Page5 (param URL `tg`) saat membuat laporan baru, dan dipakai untuk label tanggal Page1, agar konsisten dengan cek-duplikat & shift-sebelumnya.
-- Implementasi Page1: `getDataPage1()` memakai `tanggalOperasional_(tz)` sebagai `hariIni`; `page1.html` meneruskan `&tg=` ke tab baru dan menampilkan label dari `obj.hariIni`.
+- Implementasi Page1: `getDataPage1()` memakai `tanggalOperasional_(tz)` sebagai `hariIni`; `page1.html` meneruskan `&tg=` ke tab baru (param URL Page5) dan memakainya untuk queue wizard (§6.1) — tidak ada lagi label tanggal operasional terpisah di UI Page1 (dulu `#p1-tgl`, dihapus bersamaan dengan header lokal `.p1h`, lihat §1); tanggal kalender di topbar (`#tbar-tgl`) cukup untuk konteks visual sehari-hari.
 
 **Batas jam dinas laporan baru (Page1 & Page5).** Laporan baru `(tanggal D, shift S)` hanya boleh dibuat **setelah jam mulai S pada hari D**: Pagi **07:00** · Sore **14:00** · Malam **20:00** (`SHIFT_MULAI_JAM`; kelonggaran menit via `SHIFT_TOLERANSI_MENIT`, default 0). Ini batas **bawah** saja — menulis setelah shift lewat tetap boleh (mis. dinas Sore menulis pukul 20:00 diizinkan); **edit laporan lama tidak terpengaruh**. Menyubsumsi batas hari operasional lama: tanggal melebihi hari operasional otomatis tertolak karena jam mulai shift-nya belum tiba.
 - **Mekanisme** — `_hariEfektifShift_(shift)`: geser waktu sekarang **mundur sebanyak jam mulai shift** lalu format `yyyy-MM-dd` (tz skrip); laporan boleh bila `D <= hasil`. Tanggal hasil geseran baru "mencapai" D tepat saat shift D dimulai — tz-safe, dan shift Malam yang menembus tengah malam otomatis benar (pola sama dengan `tanggalOperasional_`).
@@ -393,4 +439,5 @@ Target hardcode: `{ I:80, II:80, III:75, IV:80, V:43 }`. PK number: `{ I:1..V:5 
 6. **Operasi per-nomor lewat `_cariRowByNomor_`** (posisi baris ≠ nomor).
 7. **Page9 READ-ONLY penuh.** Page7 kini **menulis** ke `Form responses 1` Daftar Dinas: `submitPermintaan` (append baris A:G, staf mengajukan) & `cancelPermintaan` (set G=BATAL, staf membatalkan) — tetap tanpa `insertSheet`/hapus baris. Kolom I (unit) terisi otomatis oleh formula sheet. Page9 tetap read-only penuh.
 8. **Minimalkan server call.** Page5 memakai `getPaketLaporan` (1 call/aksi); Page9 1 call/tahun + cache klien.
-9. **Hemat kode top-level.** Statement top-level `code.gs` jalan di **setiap** server call, jadi: `getSheets()` dienumerasi sekali (`_allSheets_`), dan opsi dropdown adalah **fungsi lazy** (`opsiperawat()/opsipasien()/opsitempat()/htmlCheckbox()`) yang hanya dieksekusi saat template `doGet` membutuhkannya (`<?!= opsiperawat() ?>`), bukan precompute `const`.
+9. **Kolom I (AlatMedik, §2.1) selalu di-replace PENUH, tidak pernah di-splice sebagian**, dan checkbox-nya **selalu `id===value`**. Menulis kolom I lewat 2 panggilan server independen yang masing-masing hanya tahu sebagian isinya (mis. alat medik lewat 1 call, DPJP lewat call lain) berisiko race condition (baca-ubah-tulis tanpa lock, salah satu menimpa yang lain) — gabungkan semua dulu di klien (`p3GatherAlatMedik`/`p5Kumpul`) jadi satu string sebelum kirim.
+10. **Hemat kode top-level.** Statement top-level `code.gs` jalan di **setiap** server call, jadi: `getSheets()` dienumerasi sekali (`_allSheets_`), dan opsi dropdown adalah **fungsi lazy** (`opsiperawat()/opsipasien()/opsitempat()/htmlCheckbox()`) yang hanya dieksekusi saat template `doGet` membutuhkannya (`<?!= opsiperawat() ?>`), bukan precompute `const`.

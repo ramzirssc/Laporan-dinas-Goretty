@@ -5,7 +5,7 @@
   .p7-form-panel{display:flex;flex-direction:column;height:100%;
     background:var(--surface);border:1px solid var(--border-soft);
     border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden}
-  .p7-panel-title{padding:9px 13px;background:#1e3f62;color:#fff;
+  .p7-panel-title{padding:9px 13px;background:var(--thead-grad);color:#fff;
     font-family:var(--serif);font-size:13px;font-style:italic;font-weight:600;flex-shrink:0}
   .p7-fscroll{flex:1;overflow-y:auto;padding:12px 13px}
   .p7-form{display:flex;flex-direction:column;gap:9px}
@@ -46,7 +46,7 @@
     border-radius:0 0 var(--radius-lg) var(--radius-lg);box-shadow:var(--shadow)}
   .p7-tbl{width:100%;border-collapse:collapse;font-size:11.5px;min-width:640px}
   .p7-tbl thead{position:sticky;top:0;z-index:10}
-  .p7-tbl thead tr th{background:#1e3f62;color:#fff;padding:8px 9px;font-size:10px;
+  .p7-tbl thead tr th{background:var(--thead-grad);color:#fff;padding:8px 9px;font-size:10px;
     font-weight:700;text-transform:uppercase;letter-spacing:.04em;text-align:left;
     white-space:nowrap;border-right:1px solid rgba(255,255,255,.1)}
   .p7-tbl thead tr th:last-child{border-right:none}
@@ -248,6 +248,7 @@ function p7RenderFilter(){
   var tbl=document.getElementById('p7-tbl'), empty=document.getElementById('p7-empty');
   if(!rows.length){ tbl.style.display='none'; empty.style.display='block'; return; }
   empty.style.display='none'; tbl.style.display='table';
+  applyRowGradient(tbl.querySelector('thead tr'));
   var todayStr=ymd(new Date()), tbody=document.getElementById('p7-tbody'); tbody.innerHTML='';
   rows.forEach(function(r,i){
     var tr=document.createElement('tr');
