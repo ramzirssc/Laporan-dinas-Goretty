@@ -75,7 +75,7 @@
     font-size:10px;font-weight:700;white-space:nowrap}
   .dpjp-badge.off{background:#fdf0ee;color:#c0392b;border:1px solid #e8a49c}
   .dpjp-badge.on{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
-  .lap-edit-ta{width:100%;min-height:120px;font-size:12px;line-height:1.65;
+  .lap-edit-ta{width:100%;min-height:360px;font-size:12px;line-height:1.65;
     font-family:var(--sans);padding:7px 9px;border:1.5px solid var(--blue-focus);
     border-radius:var(--radius-sm);resize:vertical;background:var(--field-active-bg);
     color:var(--field-active-text);}
@@ -421,7 +421,7 @@ function p3StartEditRow(nomor){
   var dCell=document.getElementById('p3-diag-cell-'+nomor);
   var lCell=document.getElementById('p3-lap-cell-'+nomor);
   var tr=lCell.parentElement;
-  var h=Math.max(120,(tr?tr.offsetHeight:120)-26);
+  var h=Math.max(360,((tr?tr.offsetHeight:120)-26)*3);
   var dRaw=dCell.getAttribute('data-raw')||'';
   var lRaw=lCell.getAttribute('data-raw')||'';
   dCell.innerHTML='<textarea class="lap-edit-ta" id="p3-ta-diag-'+nomor+'" style="height:'+h+'px">'+esc(dRaw)+'</textarea>';
