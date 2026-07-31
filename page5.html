@@ -217,6 +217,43 @@ var P5_EDIT_EXTRA = ['p5bed','p5diagnosis','p5laporan'].concat(P5_PPI_FIELDS,P5_
 var P5_CB_SEL = '.multi,.dpjp14,.ppi';
 var P5_CB_SEL_CHECKED = '.multi:checked,.dpjp14:checked,.ppi:checked';
 
+// ── Auto-cek Alat Medik dari kata di Isi Laporan ──
+// Sumber daftar+override sama dgn Page3 (checklistDefsJson, lihat code.gs).
+var P5_DEFS = <?!= checklistDefsJson() ?>;
+// Default: kata pemicu = label checkbox-nya sendiri, spasi/strip antar kata jadi opsional
+// (mis. "iv line"/"iv-line"/"ivline" semua kena). Override (TPM/PPM dkk) sudah regex jadi.
+function p5BuildDefaultAlatRegex(label){
+  var esc = String(label).replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/[\s-]+/g,'[\\s-]?');
+  return new RegExp('\\b'+esc+'\\b','i');
+}
+var P5_ALAT_TRIGGERS = {};
+P5_DEFS.alat.forEach(function(a){
+  var ov = P5_DEFS.triggerOverrides && P5_DEFS.triggerOverrides[a.id];
+  P5_ALAT_TRIGGERS[a.id] = ov ? ov.map(function(src){return new RegExp(src,'i');}) : [p5BuildDefaultAlatRegex(a.label)];
+});
+// Flag "sudah pernah terpicu" per item alat -- sekali terpicu, ketikan berikutnya tidak
+// memaksa cek ulang walau kata pemicu masih/kembali ada (supaya uncheck manual dihormati).
+var p5AlatFired = {};
+// Reset flag berdasar teks BASELINE (isi laporan saat form dibuka) -- kata yang SUDAH ada
+// sejak awal dianggap "sudah terpicu" juga, supaya tidak auto-cek ulang saat teks lain diketik.
+function p5ResetAlatFired(baselineText){
+  var fired = {};
+  Object.keys(P5_ALAT_TRIGGERS).forEach(function(id){
+    fired[id] = P5_ALAT_TRIGGERS[id].some(function(re){ return re.test(baselineText||''); });
+  });
+  return fired;
+}
+function p5HandleAlatInput(text){
+  Object.keys(P5_ALAT_TRIGGERS).forEach(function(id){
+    if(p5AlatFired[id]) return;
+    var hit = P5_ALAT_TRIGGERS[id].some(function(re){ return re.test(text); });
+    if(!hit) return;
+    p5AlatFired[id] = true;
+    var cb = document.getElementById(id);
+    if(cb && !cb.checked) cb.checked = true;
+  });
+}
+
 // Sanitasi nilai bebas sebelum digabung ke string kolom I (';' adalah pemisah token utama).
 function p5PpiEsc(s){ return String(s||'').replace(/;/g,','); }
 
@@ -268,6 +305,10 @@ function initP5(params){
    // Ganti nama / shift → muat paket (1 call). bed/diagnosis/alat ikut shift sebelumnya.
    document.getElementById('p5fNama').addEventListener('change',p5BukaFromControls);
    document.getElementById('p5fShift').addEventListener('change',p5BukaFromControls);
+   // Ketik nama alat medik di Isi Laporan -> auto-cek checkbox terkait (lihat P5_ALAT_TRIGGERS).
+   document.getElementById('p5laporan').addEventListener('input',function(){
+     p5HandleAlatInput(this.value);
+   });
    p5Ready=true;
  }
  p5ApplyMaxTgl();
@@ -471,6 +512,7 @@ function p5Render(baris){
  }
  p5ApplyPpiFields(r[8]);
  p5ApplyAntibiotik(r[8]);
+ p5AlatFired=p5ResetAlatFired(String(r[7]||''));
  if(r[1]&&tgEl)document.getElementById('p5fTgl').value=tgEl.value;
  document.getElementById('p5fShift').value=String(r[2]||'')||'Pagi';
  p5EnsureNamaOption(String(r[4]||''));
@@ -526,12 +568,19 @@ function p5SetupBaru(nama,tgl,shift,dataPasien,sebelumnya){
  if(sb.diagnosis)document.getElementById('p5diagnosis').value=sb.diagnosis;
  document.querySelectorAll(P5_CB_SEL).forEach(function(cb){cb.checked=false;});
  if(sb.alatmedik){
+   // Semua alat medik diwariskan dari shift sebelumnya, KECUALI AGD -- itu tes darah
+   // sesaat, harus diketik ulang kata "AGD" tiap shift kalau masih relevan
+   // (lihat p5HandleAlatInput; Isi Laporan sendiri selalu mulai kosong tiap shift baru).
    String(sb.alatmedik).split(';').forEach(function(id){
-     var cb=document.getElementById(String(id).trim());if(cb)cb.checked=true;
+     id=String(id).trim();
+     if(id==='AGD') return;
+     var cb=document.getElementById(id);if(cb)cb.checked=true;
    });
  }
  p5ApplyPpiFields(sb.alatmedik);
  p5ApplyAntibiotik(sb.alatmedik);
+ // (p5AlatFired sudah direset ke baseline kosong oleh p5Bersih() di atas -- Isi
+ // Laporan tidak ikut diwariskan dari shift sebelumnya.)
  // Kunci identitas, buka field yang boleh diisi
  P5_LOCK.forEach(function(id){var el=document.getElementById(id);if(el)el.disabled=true;});
  P5_NEW_EDIT.forEach(function(id){var el=document.getElementById(id);if(el)el.disabled=false;});
@@ -637,6 +686,7 @@ function p5Bersih(){
  document.querySelectorAll(P5_CB_SEL).forEach(function(cb){cb.checked=false;});
  p5ApplyPpiFields('');
  p5ApplyAntibiotik('');
+ p5AlatFired=p5ResetAlatFired('');
 }
 
 function p5KosongkanTampilan(hint){

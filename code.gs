@@ -31,12 +31,9 @@ function opsiperawat(){ return opsi("E2:E").map(d=>`<option>${d}</option>`).join
 function opsipasien(){  return opsi("I2:I").map(d=>`<option>${d}</option>`).join(""); }
 function opsitempat(){  return opsi("C2:C").map(d=>`<option>${d[0]}</option>`).join(""); }
 
-function htmlCheckbox(){ return [
-  'ArterialLine|Arterial line','CAPD','Chemoport','Cimino','CPAP','CRRT','CVC',
-  'Doublelumen|Double lumen HD','Drain','Facemask','HFNC','ICON','IVLine|IV line','Kateter',
-  'Nasalkanul','Nefrostomi','NGT','NIV','PICC',
-  'Trakeostomi','Triplelumen|Triple lumen HD','Umbicath','Ventilator','WSD'
-].map(function(item){
+// Daftar alat medik didefinisikan sekali di ALAT_LIST (dekat ALAT_TRIGGER_OVERRIDES,
+// akhir file) — htmlCheckbox() cuma me-render, tidak menyimpan daftar sendiri.
+function htmlCheckbox(){ return ALAT_LIST.map(function(item){
   var p = item.split("|");
   return `<label class="check-item" for="${p[0]}"><input type="checkbox" id="${p[0]}" class="multi" value="${p[0]}" disabled>${p[1]||p[0]}</label>`;
 }).join("\n"); }
@@ -285,7 +282,8 @@ function checklistDefsJson(){
   return JSON.stringify({
     alat: toDefs(ALAT_LIST),
     ppi: toDefs(PPI_LIST),
-    antibiotikNama: opsi("K2:K").map(function(d){return String(d[0]||'');}).filter(Boolean)
+    antibiotikNama: opsi("K2:K").map(function(d){return String(d[0]||'');}).filter(Boolean),
+    triggerOverrides: ALAT_TRIGGER_OVERRIDES
   });
 }
 
@@ -1083,11 +1081,25 @@ const DIAGNOSIS_LIST = [
 ];
 
 const ALAT_LIST = [
-  'ArterialLine|Arterial line','CAPD','Chemoport','Cimino','CPAP','CRRT','CVC',
-  'Doublelumen|Double lumen HD','Drain','Facemask','HFNC','ICON','IVLine|IV line','Kateter',
-  'Nasalkanul','Nefrostomi','NGT','NIV','PICC',
-  'Trakeostomi','Triplelumen|Triple lumen HD','Umbicath','Ventilator','WSD'
+  'AGD',
+  'ArterialLine|Arterial line','BodyWarmer|Body warmer','CAPD','Chemoport','Cimino',
+  'CPAP','CRRT','CVC','Defibrilator',
+  'Doublelumen|Double lumen HD','Drain','EKG','Facemask','HFNC','ICON',
+  'InfusePump|Infuse pump','IVLine|IV line','KasurDekubitus|Kasur dekubitus','Kateter',
+  'Nasalkanul','Nefrostomi','NGT','NIV','Penopang','PICC','SyringePump|Syringe pump',
+  'Trakeostomi','TpmPpm|TPM/PPM','Triplelumen|Triple lumen HD','Umbicath','Ventilator','WSD'
 ];
+
+// Auto-cek checkbox alat medik dari kata yang diketik di Isi Laporan (Page5) / editor
+// inline (Page3). Default: kata pemicu = label checkbox itu sendiri (spasi/strip antar
+// kata jadi opsional, dibangun otomatis di client — lihat *BuildDefaultAlatRegex). 3 item
+// di bawah override karena kata pemicunya beda dari nama checkbox-nya; cukup salah satu
+// regex (JS source string, tanpa delimiter, selalu diuji /i) yang cocok utk memicu.
+const ALAT_TRIGGER_OVERRIDES = {
+  TpmPpm: ['\\bTPM\\b', '\\bPPM\\b'],
+  Defibrilator: ['\\bKardioversi\\b', '\\bDC[\\s-]?Syok\\b', '\\bDC[\\s-]?Shock\\b', '\\bDefib\\b'],
+  Penopang: ['\\bn[\\s-]?epi\\b', '\\bamiodaron\\b', '\\bcordaron\\b', '\\bdobutamin\\b', '\\bdopamin\\b']
+};
 
 function refreshPivot() {
   var tz = Session.getScriptTimeZone();

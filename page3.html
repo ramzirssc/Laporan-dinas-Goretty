@@ -184,6 +184,39 @@ var p3c=[];
 // (bukan google.script.run terpisah tiap klik Edit).
 var P3_DEFS = <?!= checklistDefsJson() ?>;
 var p3ExtraTokens={}; // token kolom I tak dikenal per-nomor (dijaga tetap utuh saat replace penuh)
+
+// ── Auto-cek Alat Medik dari kata di Isi Laporan (editor inline) -- sama persis dgn
+// Page5 (p5BuildDefaultAlatRegex/p5HandleAlatInput), 1 sumber P3_DEFS via checklistDefsJson.
+function p3BuildDefaultAlatRegex(label){
+  var esc = String(label).replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/[\s-]+/g,'[\\s-]?');
+  return new RegExp('\\b'+esc+'\\b','i');
+}
+var P3_ALAT_TRIGGERS = {};
+P3_DEFS.alat.forEach(function(a){
+  var ov = P3_DEFS.triggerOverrides && P3_DEFS.triggerOverrides[a.id];
+  P3_ALAT_TRIGGERS[a.id] = ov ? ov.map(function(src){return new RegExp(src,'i');}) : [p3BuildDefaultAlatRegex(a.label)];
+});
+// Flag "sudah pernah terpicu" per-nomor (baris bisa diedit satu per satu; direset tiap
+// p3StartEditRow berdasar teks laporan tersimpan sbg baseline, dihapus saat batal/simpan).
+var p3AlatFired={};
+function p3ResetAlatFired(baselineText){
+  var fired={};
+  Object.keys(P3_ALAT_TRIGGERS).forEach(function(id){
+    fired[id]=P3_ALAT_TRIGGERS[id].some(function(re){ return re.test(baselineText||''); });
+  });
+  return fired;
+}
+function p3HandleAlatInput(nomor,text){
+  var fired=p3AlatFired[nomor]; if(!fired) return;
+  Object.keys(P3_ALAT_TRIGGERS).forEach(function(id){
+    if(fired[id]) return;
+    var hit=P3_ALAT_TRIGGERS[id].some(function(re){ return re.test(text); });
+    if(!hit) return;
+    fired[id]=true;
+    var cb=document.getElementById('p3ed-'+nomor+'-alat-'+id);
+    if(cb && !cb.checked) cb.checked=true;
+  });
+}
 function initP3(){
   var today=new Date(),tiga=new Date();tiga.setDate(today.getDate()-2);
   document.getElementById('f-dari').value  =ymd(tiga);
@@ -438,8 +471,13 @@ function p3StartEditRow(nomor){
   document.getElementById('p3-edit-'+nomor).style.display='none';
   document.getElementById('p3-save-'+nomor).style.display='block';
   document.getElementById('p3-cancel-'+nomor).style.display='block';
+  p3AlatFired[nomor]=p3ResetAlatFired(lRaw);
   var ta=document.getElementById('p3-ta-lap-'+nomor);
-  if(ta){ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);}
+  if(ta){
+    ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);
+    // Ketik nama alat medik di Isi Laporan -> auto-cek checkbox terkait (P3_ALAT_TRIGGERS).
+    ta.addEventListener('input',function(){ p3HandleAlatInput(nomor,this.value); });
+  }
 }
 
 function p3CancelEditRow(nomor){
@@ -452,6 +490,7 @@ function p3CancelEditRow(nomor){
   var edEl=document.getElementById('p3-alat-edit-'+nomor);
   edEl.style.display='none'; edEl.innerHTML='';
   document.getElementById('p3-alat-view-'+nomor).style.display='block';
+  delete p3AlatFired[nomor];
   document.getElementById('p3-dpjp-cell-'+nomor).innerHTML=p3DpjpViewHtml(rec);
   delete p3ExtraTokens[nomor];
   document.getElementById('p3-edit-'+nomor).style.display='block';
@@ -488,6 +527,7 @@ function p3SaveRow(nomor){
     document.getElementById('p3-alat-view-'+nomor).innerHTML=p3AlatViewHtml(alatRaw);
     document.getElementById('p3-dpjp-cell-'+nomor).innerHTML=p3DpjpViewHtml(rec);
     delete p3ExtraTokens[nomor];
+    delete p3AlatFired[nomor];
     document.getElementById('p3-edit-'+nomor).style.display='block';
     document.getElementById('p3-save-'+nomor).style.display='none';
     document.getElementById('p3-cancel-'+nomor).style.display='none';

@@ -103,7 +103,7 @@ Kolom I dipakai bersama oleh 4 konsep, semua digabung jadi **satu string**, dipi
 - **PPI singkat**: `TindakanOperasi=...` (teks bebas, default kosong), `HasilKultur=...` (teks bebas, default `'0'`), `Suhu=...` (angka, default `'36'`).
 - **Antibiotik** — 5 slot, `Antibiotik{1-5}Nama=...` / `Antibiotik{1-5}Freq=...` / `Antibiotik{1-5}Berat=...`. **Nama** = dropdown dari `Lookup!K2:K` (`opsiantibiotik()`, lazy, cache lewat `opsi()`). **Freq** dibakukan **hanya angka 1–10** (`<select>`, bukan teks bebas — tak bisa diisi teks lain). **Berat** (dosis) **teks bebas** (mis. `100 mg`, `200 mg`, `1 gram`) — dosis anak-anak sulit dibakukan ke daftar tetap, jadi cuma jenis antibiotiknya yang dipilih dari daftar baku, dosis & frekuensi bebas/dibatasi manual. **Slot yang Nama-nya kosong TIDAK ditulis sama sekali** (`Antibiotik3Nama=` kosong tidak ditulis ke sheet) — supaya string kolom I tak membengkak percuma & parsing baliknya bersih. Freq/Berat hanya bermakna kalau Nama terisi; parsing balik memprosesnya **atomik per slot** (nama+freq+berat sekaligus dari token slot yang sama) supaya tidak nyasar tertukar antar slot.
 
-**Sumber checklist bersama (1 sumber untuk Page3 & Page5):** `checklistDefsJson()` (`code.gs`) mengembalikan `{alat:[{id,label}], ppi:[{id,label}], antibiotikNama:[...]}` dari `ALAT_LIST`/`PPI_LIST`/`Lookup!K` — dipakai Page3 (`P3_DEFS`, disuntik sekali via `<?!= checklistDefsJson() ?>` saat load, bukan `google.script.run` per klik Edit) supaya menambah 1 alat medik/PPI baru cukup ubah `ALAT_LIST`/`PPI_LIST` di satu tempat.
+**Sumber checklist bersama (1 sumber untuk Page3 & Page5):** `checklistDefsJson()` (`code.gs`) mengembalikan `{alat:[{id,label}], ppi:[{id,label}], antibiotikNama:[...], triggerOverrides:{...}}` dari `ALAT_LIST`/`PPI_LIST`/`Lookup!K`/`ALAT_TRIGGER_OVERRIDES` — dipakai Page3 (`P3_DEFS`, disuntik sekali via `<?!= checklistDefsJson() ?>` saat load, bukan `google.script.run` per klik Edit) dan Page5 (`P5_DEFS`) supaya menambah 1 alat medik/PPI baru cukup ubah `ALAT_LIST`/`PPI_LIST` di satu tempat. `triggerOverrides` dipakai fitur auto-cek dari narasi — lihat §13.
 
 ---
 
@@ -259,6 +259,7 @@ Urutan shift harian: **Pagi → Sore → Malam**.
 Sisi client (page5, `p5SetupBaru`):
 - Saat masuk mode baru, form dibersihkan lalu **bed/diagnosis/alat (+PPI/antibiotik/DPJP visit, lihat §7.1) diisi dari shift sebelumnya** (bed dari shift sebelumnya menimpa bed default dari ws2).
 - Berlaku di kedua jalur pembuatan baru: dari Page1 (tab baru) dan dari kontrol pencarian Page5.
+- **Pengecualian: token `AGD` sengaja dibuang** dari `sb.alatmedik` sebelum checkbox di-restore — lihat §13.
 
 > Wrapper lama `getDiagnosisShiftSebelumnya` sudah dihapus (tak dipakai).
 
@@ -441,3 +442,18 @@ Target hardcode: `{ I:80, II:80, III:75, IV:80, V:43 }`. PK number: `{ I:1..V:5 
 8. **Minimalkan server call.** Page5 memakai `getPaketLaporan` (1 call/aksi); Page9 1 call/tahun + cache klien.
 9. **Kolom I (AlatMedik, §2.1) selalu di-replace PENUH, tidak pernah di-splice sebagian**, dan checkbox-nya **selalu `id===value`**. Menulis kolom I lewat 2 panggilan server independen yang masing-masing hanya tahu sebagian isinya (mis. alat medik lewat 1 call, DPJP lewat call lain) berisiko race condition (baca-ubah-tulis tanpa lock, salah satu menimpa yang lain) — gabungkan semua dulu di klien (`p3GatherAlatMedik`/`p5Kumpul`) jadi satu string sebelum kirim.
 10. **Hemat kode top-level.** Statement top-level `code.gs` jalan di **setiap** server call, jadi: `getSheets()` dienumerasi sekali (`_allSheets_`), dan opsi dropdown adalah **fungsi lazy** (`opsiperawat()/opsipasien()/opsitempat()/htmlCheckbox()`) yang hanya dieksekusi saat template `doGet` membutuhkannya (`<?!= opsiperawat() ?>`), bukan precompute `const`.
+
+---
+
+## 13. Auto-cek Alat Medik dari Narasi Laporan (Page5 & Page3)
+
+Staf tidak perlu mencentang checkbox alat medik manual — cukup sebutkan alatnya di teks **Isi Laporan**, checkbox terkait otomatis tercentang saat mengetik.
+
+- **Sumber tunggal pemicu**: `ALAT_LIST` (`code.gs`) — kata pemicu **default** = label checkbox itu sendiri. `ALAT_TRIGGER_OVERRIDES` (`code.gs`, dekat `ALAT_LIST`) — 3 item dengan kata pemicu **beda** dari nama checkbox: `TpmPpm` (kata "TPM"/"PPM"), `Defibrilator` ("Kardioversi"/"DC Syok"/"DC Shock"/"Defib"), `Penopang` ("n-epi"/"amiodaron"/"cordaron"/"dobutamin"/"dopamin" — status pakai obat vasopressor/inotropik). Keduanya dikirim ke client lewat `checklistDefsJson()` (field `triggerOverrides`, §2.1).
+- **Regex default dibangun di client** (`p5BuildDefaultAlatRegex`/`p3BuildDefaultAlatRegex`, logika identik di kedua halaman): escape karakter regex, ganti spasi/strip antar kata jadi `[\s-]?` (opsional), bungkus `\bLabel\b`, flag `/i` — jadi "iv line"/"iv-line"/"ivline" semua kena. Menambah 1 alat baru ke `ALAT_LIST` otomatis dapat auto-cek tanpa ubah kode client (kecuali kalau kata pemicunya perlu beda dari labelnya — tambahkan ke `ALAT_TRIGGER_OVERRIDES`).
+- **Edge-triggered, sekali per sesi** (`p5AlatFired` di Page5; `p3AlatFired[nomor]` per baris di Page3): begitu kata pemicu **pertama kali muncul** saat mengetik, checkbox dicentang lalu ditandai "sudah terpicu" untuk item itu. Setelah itu:
+  - Di-uncheck manual → **tidak dipaksa tercentang lagi** meski kata masih ada di teks.
+  - Checkbox yang sudah tercentang → **tidak pernah auto-uncheck** walau kata pemicunya dihapus dari narasi.
+  - Flag direset ke **baseline teks** setiap laporan/form dibuka (`p5Render` & `p5Bersih` di Page5; `p3StartEditRow` di Page3) — kata yang **sudah ada sejak awal** dianggap sudah terpicu juga, supaya mengetik teks lain yang tak terkait tidak memicu auto-cek "baru".
+- Listener terpasang di event `input` textarea Isi Laporan — realtime saat mengetik, bukan hanya saat Simpan: `#p5laporan` (Page5) dan `#p3-ta-lap-<nomor>` per baris (editor inline Page3, §8).
+- **Pengecualian pewarisan shift: hanya AGD.** Alat medik lain (termasuk 3 item override) diwariskan normal ke laporan shift berikutnya (§7) — `p5SetupBaru` sengaja membuang token `AGD` dari `sb.alatmedik` sebelum checkbox di-restore. AGD adalah tes darah sesaat, harus diketik ulang kata "AGD" tiap shift kalau masih relevan; karena Isi Laporan sendiri selalu mulai kosong tiap laporan baru, flag terpicunya otomatis ikut ke baseline kosong juga.
