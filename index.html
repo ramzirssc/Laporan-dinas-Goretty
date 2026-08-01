@@ -237,14 +237,6 @@ function toast(msg,type){
 }
 function errH(err){loading(false);toast(err&&err.message?err.message:String(err),'err');}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-// Token mentah kolom I (alat medik/PPI/DPJP/antibiotik) -> daftar label chip ringkas.
-// Token Key=Value (isian PPI singkat, slot antibiotik) sengaja disembunyikan dari
-// chip ringkas ini -- rinciannya ditampilkan lewat editor Page3, bukan di sini.
-var P_CHIP_LABELS={DpjpVisit14:'DPJP visit <14.00'};
-function chipLabelFilter(tokens){
-  return tokens.filter(function(t){return t.indexOf('=')<0;})
-    .map(function(t){return P_CHIP_LABELS[t]||t;});
-}
 // Bikin gradient header tabel terlihat 1 kesatuan menyatu kiri->kanan, bukan
 // per-kolom. Trik: background-size = lebar total baris, background-position =
 // -offset kumulatif tiap sel -- tiap sel jadi "jendela" ke satu gradient raksasa

@@ -47,6 +47,7 @@
   .chips{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px}
   .chip{font-size:10px;padding:2px 7px;background:var(--blue-lt);color:var(--blue-dk);
     border:1px solid var(--blue-mid);border-radius:9px;font-weight:600}
+  .chip-ppi{background:#fef3c7;color:#92400e;border-color:#f0b429}
   .lap-txt{font-size:12px;line-height:1.65;color:var(--text);white-space:pre-wrap;
     word-wrap:break-word;word-break:break-word;}
   .no-lap{color:var(--muted);font-style:italic;font-size:12px}
@@ -116,6 +117,7 @@
     .p3t tbody tr.s-malam{background:#f0f4fa !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .tgl-grp td{background:#dce8f4 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .chip{background:#ddeaf8 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .chip-ppi{background:#fdecc8 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .nomor-cell{color:#274f7c !important}
     body{background:#fff !important}
     .btn-edit-sm,.btn-save-sm,.btn-cancel-sm,.p3-ed{display:none !important}
@@ -159,7 +161,7 @@
   <div class="p3-scroll" id="p3-scroll-area">
     <!-- Header cetak: tersembunyi di layar, muncul saat print -->
     <div class="p3-print-header" id="p3-print-header">
-      <h1>Lihat Laporan — IPI Damianus RS St. Carolus</h1>
+      <h1>Lihat Laporan — IPI Goretty RS St. Carolus</h1>
       <p id="p3-print-sub"></p>
     </div>
     <div class="p3-loader" id="p3-loader">Memuat laporan…</div>
@@ -320,10 +322,36 @@ function renderP3(raw){
 // DPJP visit BUKAN bagian dari editor ini -- tampil & diedit lewat kolom
 // DPJP & Konsulen (p3DpjpViewHtml/p3DpjpEditHtml), walau token-nya (DpjpVisit14)
 // tetap digabung ke string kolom I yang sama saat disimpan (p3GatherAlatMedik).
+function p3LabelFor(list,id){
+  for(var i=0;i<list.length;i++) if(list[i].id===id) return list[i].label;
+  return id;
+}
+// Ringkasan Alat Medik (chip biru) + PPI (chip amber) + Tindakan Operasi/Suhu/
+// Kultur/Antibiotik (baris teks) untuk kolom Pasien saat baris TIDAK sedang
+// diedit. Sebelumnya fungsi ini cuma menampilkan chip alat & membuang semua
+// token "Key=Value" (Suhu/HasilKultur/TindakanOperasi/Antibiotik*) -- makanya
+// field-field itu tak pernah terlihat di Lihat Laporan maupun Operan Dinas
+// (p4PpiRowsHtml, page4.html, memakai d.kv yang sama).
+// Suhu/Kultur/Tindakan disembunyikan bila token-nya belum pernah ada di kolom I
+// (laporan lama sebelum fitur ini ada) -- beda dari string kosong, supaya tak
+// memalsukan nilai default untuk data lama.
 function p3AlatViewHtml(rawAlat){
-  var tokens=(rawAlat||'').split(';').filter(Boolean).filter(function(t){return t!=='DpjpVisit14';});
-  var chips=chipLabelFilter(tokens);
-  return chips.length?'<div class="chips" style="margin-top:3px">'+chips.map(function(a){return'<span class="chip">'+esc(a)+'</span>';}).join('')+'</div>':'';
+  var d=p3ParseAlat(rawAlat);
+  var alatChips=d.alatIds.map(function(id){return p3LabelFor(P3_DEFS.alat,id);});
+  var ppiChips=d.ppiIds.map(function(id){return p3LabelFor(P3_DEFS.ppi,id);});
+  var abTxt=[];
+  for(var i=1;i<=5;i++){
+    var ab=d.antibiotik[i];
+    if(ab&&ab.Nama) abTxt.push(ab.Nama+(ab.Freq?' '+ab.Freq+'x':'')+(ab.Berat?' '+ab.Berat:''));
+  }
+  var h='';
+  if(alatChips.length) h+='<div class="chips" style="margin-top:3px">'+alatChips.map(function(a){return'<span class="chip">'+esc(a)+'</span>';}).join('')+'</div>';
+  if(ppiChips.length) h+='<div class="chips" style="margin-top:3px">'+ppiChips.map(function(a){return'<span class="chip chip-ppi">'+esc(a)+'</span>';}).join('')+'</div>';
+  h+=strow('Suhu', d.kv.Suhu!==undefined?d.kv.Suhu+' °C':'')
+    +strow('Kultur', d.kv.HasilKultur!==undefined?d.kv.HasilKultur:'')
+    +strow('Tindakan', d.kv.TindakanOperasi||'','s')
+    +strow('Antibiotik', abTxt.join(', '),'s');
+  return h;
 }
 function p3DpjpViewHtml(r){
   var d=p3ParseAlat(r.alatmedik||'');
@@ -359,7 +387,7 @@ function p3ParseAlat(raw){
       antibiotik[i]={Nama:kv['Antibiotik'+i+'Nama'],Freq:kv['Antibiotik'+i+'Freq']||'',Berat:kv['Antibiotik'+i+'Berat']||''};
     }
   }
-  return {alatIds:alatIds, ppiIds:ppiIds, extra:extra, dpjp14:dpjp14,
+  return {alatIds:alatIds, ppiIds:ppiIds, extra:extra, dpjp14:dpjp14, kv:kv,
     tindakan:kv.TindakanOperasi!==undefined?kv.TindakanOperasi:'',
     kultur:kv.HasilKultur!==undefined?kv.HasilKultur:'0',
     suhu:kv.Suhu!==undefined?kv.Suhu:'36',

@@ -102,6 +102,7 @@
   .p4d-chips{display:flex;flex-wrap:wrap;gap:3px;margin:4px 0 6px}
   .p4d-chip{font-size:10px;padding:2px 7px;background:var(--blue-lt);color:var(--blue-dk);
     border:1px solid var(--blue-mid);border-radius:9px;font-weight:600}
+  .p4d-chip-ppi{background:#fef3c7;color:#92400e;border-color:#f0b429}
   .p4d-sep{border:none;border-top:1px solid var(--border-soft);margin:7px 0}
   .p4d-diag{font-size:11.5px;color:var(--text-soft);font-style:italic;margin-bottom:5px;line-height:1.5}
   .p4d-lap{font-size:12px;line-height:1.7;color:var(--text);white-space:pre-wrap;
@@ -133,6 +134,7 @@
     .p4d-lap,.p4d-diag{font-size:8.5pt !important;line-height:1.4 !important}
     .p4d-cb{padding:5pt 7pt !important}
     body{background:#fff !important}
+    .p4d-chip-ppi{background:#fdecc8 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .p4d-pagi .p4d-ch{background:#e6f7ec !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .p4d-sore .p4d-ch{background:#fff7e0 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .p4d-malam .p4d-ch{background:#e8eef6 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -194,7 +196,7 @@
 
   <div class="p4d-scroll" id="p4d-scroll">
     <div class="p4d-print-title">
-      <h1>Laporan Dinas — IPI Damianus RS St. Carolus</h1>
+      <h1>Laporan Dinas — IPI Goretty RS St. Carolus</h1>
       <p id="p4d-print-sub"></p>
     </div>
     <div id="p4d-loader" class="p4d-loader" style="display:none">Memuat laporan…</div>
@@ -388,6 +390,24 @@ function p4dShowErr(msg){
   document.getElementById('p4d-content').innerHTML='<div class="p4d-err">⚠ '+esc(msg)+'</div>';
 }
 
+// Ringkasan Tindakan Operasi/Suhu/Kultur/Antibiotik (baris teks) dari kolom I
+// yang sudah diuraikan lewat p3ParseAlat -- fungsi global yang sama dipakai
+// Page3 (Lihat Laporan; page3.html dimuat sebelum page4.html di index.html,
+// jadi P3_DEFS/p3ParseAlat/p3LabelFor sudah tersedia saat script ini jalan).
+// Suhu/Kultur/Tindakan disembunyikan bila token-nya belum pernah ada di kolom I
+// (laporan lama sebelum fitur ini ada) -- beda dari string kosong, supaya tak
+// memalsukan nilai default untuk data lama.
+function p4PpiRowsHtml(d){
+  var abTxt=[];
+  for(var i=1;i<=5;i++){
+    var ab=d.antibiotik[i];
+    if(ab&&ab.Nama) abTxt.push(ab.Nama+(ab.Freq?' '+ab.Freq+'x':'')+(ab.Berat?' '+ab.Berat:''));
+  }
+  return p4dRow('Suhu', d.kv.Suhu!==undefined?d.kv.Suhu+' °C':'')
+    +p4dRow('Kultur', d.kv.HasilKultur!==undefined?d.kv.HasilKultur:'')
+    +p4dRow('Tindakan', d.kv.TindakanOperasi||'')
+    +p4dRow('Antibiotik', abTxt.join(', '));
+}
 function p4dBuildSeksi(namaP, laps) {
   var html='<div class="p4d-patient-sec">'
     +'<div class="p4d-patient-hdr">'
@@ -397,8 +417,12 @@ function p4dBuildSeksi(namaP, laps) {
   laps.forEach(function(r){
     var sc=(r.shift||'').toLowerCase();
     var cls='p4d-'+(sc==='pagi'?'pagi':sc==='sore'?'sore':'malam');
-    var alat=chipLabelFilter((r.alatmedik||'').split(';').filter(Boolean));
+    var d=p3ParseAlat(r.alatmedik);
+    var alat=d.alatIds.map(function(id){return p3LabelFor(P3_DEFS.alat,id);});
+    if(d.dpjp14) alat.push('DPJP visit <14.00');
+    var ppi=d.ppiIds.map(function(id){return p3LabelFor(P3_DEFS.ppi,id);});
     var alatH=alat.length?'<div class="p4d-chips">'+alat.map(function(a){return'<span class="p4d-chip">'+esc(a)+'</span>';}).join('')+'</div>':'';
+    var ppiH=ppi.length?'<div class="p4d-chips">'+ppi.map(function(a){return'<span class="p4d-chip p4d-chip-ppi">'+esc(a)+'</span>';}).join('')+'</div>':'';
     html+='<div class="p4d-card '+cls+'">'
       +'<div class="p4d-ch"><div class="p4d-ch-left">'
         +'<span class="p4d-shift">'+esc(r.shift||'')+'</span>'
@@ -411,7 +435,7 @@ function p4dBuildSeksi(namaP, laps) {
         +p4dFrow1('Konsulen',r.dpjplain)
         +p4dFrow1('PJ',r.pj)
         +p4dFrow1('PP',r.pp)
-        +alatH+'<hr class="p4d-sep">'
+        +alatH+ppiH+p4PpiRowsHtml(d)+'<hr class="p4d-sep">'
         +(r.diagnosis?'<div class="p4d-diag">'+esc(String(r.diagnosis))+'</div>':'')
         +(r.laporan?'<div class="p4d-lap">'+esc(String(r.laporan))+'</div>':'<span class="no-lap4">Isi laporan kosong</span>')
       +'</div></div>';
