@@ -174,6 +174,7 @@
       <button class="tab-btn"        onclick="gotoPage('p10')">📅 Jadwal Dinas</button>
       <button class="tab-btn"        onclick="gotoPage('p11')">🗓️ Jadwal jaga Anestesi</button>
       <button class="tab-btn"        onclick="window.open('https://script.google.com/macros/s/AKfycbx_webHu3ZVG50tVZMKmjkVgMysKFYnN7GqtrLJYehFTUYN2P9wwoutHbux850UUpWU/exec','_blank')">🩺 SISMADAK</button>
+      <button class="tab-btn"        onclick="bukaPPI()">🧴 PPI</button>
     </div>
     <div class="divider-v"></div>
     <div class="topbar-info">
@@ -228,6 +229,16 @@ function gotoPage(id,params){
   if(id==='p11'){initP11();loaded.p11=true;}
 }
 
+function bukaPPI(){
+  var win=window.open('','_blank');
+  google.script.run.withSuccessHandler(function(json){
+    var r=JSON.parse(json);
+    if(win) win.location=(r&&r.ok&&r.url)?r.url:'https://docs.google.com/spreadsheets/d/1_EVmA8QSxdNCbV_ylwy_sbGdB8s8jjM2i3yMDpVyi3E/edit';
+  }).withFailureHandler(function(err){
+    if(win) win.location='https://docs.google.com/spreadsheets/d/1_EVmA8QSxdNCbV_ylwy_sbGdB8s8jjM2i3yMDpVyi3E/edit';
+    errH(err);
+  }).getPPISheetUrl();
+}
 function loading(v){document.getElementById('overlay').classList.toggle('show',v);}
 function toast(msg,type){
   var c=document.getElementById('toasts');

@@ -767,6 +767,30 @@ function getDaftarDinas(tglMulai, tglAkhir) {
 }
 
 // ═══════════════════════════════════════════════════════
+//  TAB PPI — link ke spreadsheet PPI eksternal, langsung ke sheet bulan
+//  berjalan (mis. "AGUSTUS 2026" — nama sheet di sana kapital semua).
+//  READ-ONLY: hanya baca nama sheet utk cari gid, tidak pernah menulis
+//  ke spreadsheet ini.
+// ═══════════════════════════════════════════════════════
+var PPI_SS_ID = '1_EVmA8QSxdNCbV_ylwy_sbGdB8s8jjM2i3yMDpVyi3E';
+var PPI_FALLBACK_GID = 2027098112;
+var PPI_BULAN = ['JANUARI','FEBRUARI','MARET','APRIL','MEI','JUNI',
+                  'JULI','AGUSTUS','SEPTEMBER','OKTOBER','NOVEMBER','DESEMBER'];
+
+function getPPISheetUrl() {
+  var tz = Session.getScriptTimeZone();
+  var now = new Date();
+  var namaSheet = PPI_BULAN[Number(Utilities.formatDate(now,tz,'M'))-1]+' '+Utilities.formatDate(now,tz,'yyyy');
+  var gid = PPI_FALLBACK_GID;
+  try {
+    var sh = SpreadsheetApp.openById(PPI_SS_ID).getSheetByName(namaSheet);
+    if(sh) gid = sh.getSheetId();
+  } catch(e){}
+  var url = 'https://docs.google.com/spreadsheets/d/'+PPI_SS_ID+'/edit?gid='+gid+'#gid='+gid;
+  return JSON.stringify({ok:true, url:url});
+}
+
+// ═══════════════════════════════════════════════════════
 //  PAGE 8 — STATISTIK
 //  Merge ada di workbook yang sama — tidak perlu openById
 // ═══════════════════════════════════════════════════════
