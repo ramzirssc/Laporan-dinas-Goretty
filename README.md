@@ -342,16 +342,19 @@ var DIAGNOSIS_LIST = [
   'snad','ileus','tutup','respiratory distress','ependimoma','astma','sifilis',
   'pertusis','bronkiolitis','anemia'
 ];
-var ALAT_LIST = [
-  'ArterialLine|Arterial line','CAPD','Chemoport','Cimino','CPAP','CRRT','CVC',
-  'Doublelumen|Double lumen HD','Drain','Facemask','HFNC','ICON','IVLine|IV line','Kateter',
-  'Nasalkanul','Nefrostomi','NGT','NIV','PICC',
-  'Trakeostomi','Triplelumen|Triple lumen HD','Umbicath','Ventilator','WSD'
+const ALAT_LIST = [
+  'AGD',
+  'ArterialLine|Arterial line','BodyWarmer|Body warmer','CAPD','Chemoport','Cimino',
+  'CPAP','CRRT','CVC','Defibrilator',
+  'Doublelumen|Double lumen HD','Drain','EKG','Facemask','Fototerapi','HFNC','ICON',
+  'InfusePump|Infuse pump','IVLine|IV line','KasurDekubitus|Kasur dekubitus','Kateter',
+  'Nasalkanul','Nefrostomi','NGT','NIV','Penopang','PICC','SyringePump|Syringe pump',
+  'Trakeostomi','TpmPpm|TPM/PPM','Triplelumen|Triple lumen HD','Umbicath','Ventilator','WSD'
 ];
 ```
 > Pencocokan diagnosis bersifat substring (mis. `rd` bisa cocok dalam `ards`). Bila perlu presisi, ubah ke pencocokan per-kata.
 >
-> `ALAT_LIST` dipakai bersama oleh statistik Page8 **dan** checklist Alat Medik Page3/Page5 (`checklistDefsJson`, `htmlCheckbox`, §2.1) — menambah 1 alat medik baru harus konsisten di ketiga tempat (`ALAT_LIST` top-level di sini, `htmlCheckbox()` dekat awal `code.gs`; keduanya duplikat literal array yang sama, belum disatukan jadi 1 sumber). `PPI_LIST` (10 item, §2.1) hanya dipakai checklist PPI, **tidak** ikut statistik Page8.
+> `ALAT_LIST` (dekat `ALAT_TRIGGER_OVERRIDES`, akhir `code.gs`) adalah **1 sumber tunggal** dipakai bersama oleh statistik Page8 **dan** checklist Alat Medik Page3/Page5 (`checklistDefsJson`, `htmlCheckbox()` — `htmlCheckbox()` cuma me-render, tidak menyimpan daftar sendiri) — menambah 1 alat medik baru cukup ubah `ALAT_LIST` di satu tempat itu. `PPI_LIST` (10 item, §2.1) hanya dipakai checklist PPI, **tidak** ikut statistik Page8.
 
 ---
 

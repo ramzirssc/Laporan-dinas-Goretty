@@ -1108,7 +1108,7 @@ const ALAT_LIST = [
   'AGD',
   'ArterialLine|Arterial line','BodyWarmer|Body warmer','CAPD','Chemoport','Cimino',
   'CPAP','CRRT','CVC','Defibrilator',
-  'Doublelumen|Double lumen HD','Drain','EKG','Facemask','HFNC','ICON',
+  'Doublelumen|Double lumen HD','Drain','EKG','Facemask','Fototerapi','HFNC','ICON',
   'InfusePump|Infuse pump','IVLine|IV line','KasurDekubitus|Kasur dekubitus','Kateter',
   'Nasalkanul','Nefrostomi','NGT','NIV','Penopang','PICC','SyringePump|Syringe pump',
   'Trakeostomi','TpmPpm|TPM/PPM','Triplelumen|Triple lumen HD','Umbicath','Ventilator','WSD'
