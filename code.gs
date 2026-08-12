@@ -1582,6 +1582,9 @@ function submitPermintaan(data){
   try{
     var sh = _pdFormSheet_();
     var row = sh.getLastRow()+1;
+    // getRange() tidak auto-expand grid — kalau row melebihi sh.getMaxRows()
+    // akan lempar "coordinates outside the dimensions of the sheet".
+    if(row > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), row - sh.getMaxRows());
     sh.getRange(row,1,1,7).setValues([[new Date(), nama, jenis, mulai, selesai, alasan, '']]);
     sh.getRange(row,1).setNumberFormat('M/d/yyyy H:mm:ss');
     sh.getRange(row,4,1,2).setNumberFormat('M/d/yyyy');
