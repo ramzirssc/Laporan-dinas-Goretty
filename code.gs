@@ -20,7 +20,7 @@ function opsi(range) {
   var hasil = SpreadsheetApp.getActiveSpreadsheet()
     .getSheetByName("Lookup").getRange(range).getValues()
     .filter(function(o){return o[0]!='';});
-  cache.put(key, JSON.stringify(hasil), 300);
+  try{cache.put(key, JSON.stringify(hasil), 300);}catch(e){}
   return hasil;
 }
 
@@ -202,7 +202,11 @@ function getDataPage1() {
     };
     var hasil = JSON.stringify({colDefs:colDefs, pasien:pasienList, sudahAda:sudahAda,
       hariIni:hariIni, dokterJaga:dokterJaga, shiftBuka:shiftBuka});
-    cache.put('p1_data', hasil, 60);
+    // cache.put dibungkus try/catch (bukan bagian try besar di atas) supaya kalau payload
+    // kelewat besar utk CacheService, penulisan cache yg gagal TIDAK menggagalkan hasil yg
+    // sudah berhasil dihitung (dulu: gagal cache.put → jatuh ke catch(errFatal) di bawah →
+    // hasil yg valid dibuang, klien malah terima blob error).
+    try{cache.put('p1_data', hasil, 60);}catch(eCache){}
     return hasil;
   } catch(errFatal) {
     return JSON.stringify({colDefs:[],pasien:[],sudahAda:{},hariIni:'',dokterJaga:'',

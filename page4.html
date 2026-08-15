@@ -59,9 +59,6 @@
     border-radius:var(--radius-sm);background:var(--field-active-bg);color:var(--field-active-text);
     -webkit-appearance:none;appearance:none}
   .ff4 select:focus{outline:none;border-color:var(--blue-focus);box-shadow:0 0 0 3px var(--blue-lt)}
-  .p4d-cnt{font-size:12px;color:var(--muted);font-style:italic;padding:5px 14px;
-    background:var(--surface2);border:1px solid var(--border-soft);
-    border-top:none;border-bottom:none;flex-shrink:0}
   .p4d-scroll{flex:1;overflow-y:auto;overflow-x:hidden;background:var(--bg);
     border:1px solid var(--border-soft);border-top:none;
     border-radius:0 0 var(--radius-lg) var(--radius-lg);
@@ -118,22 +115,18 @@
     font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;
     gap:5px;white-space:nowrap;min-height:44px;transition:background .18s}
   .btn-print4:hover{background:var(--slate-lt)}
-  .p4d-print-title{display:none;margin-bottom:10pt;padding-bottom:6pt;border-bottom:1pt solid #c8d4e3}
-  .p4d-print-title h1{font-size:13pt;font-weight:700;color:#1e3f62}
-  .p4d-print-title p{font-size:9pt;color:#666;margin-top:3pt}
+  /* .topbar, .noprint, body{background:#fff} sudah global di index.html */
   @media print{
     .p4d-outer{height:auto !important;display:block !important}
     .p4d-scroll{overflow:visible !important;border:none !important;padding:0 !important;
       box-shadow:none !important;background:#fff !important}
-    .p4d-search-bar,.p4d-sel-bar,.p4d-sep-bar,.p4df,.p4d-cnt,.btn-print4,.topbar{display:none !important}
-    .p4d-print-title{display:block !important}
+    .p4d-search-bar,.p4d-sel-bar,.p4d-sep-bar,.p4df,#p4d-cnt,.btn-print4{display:none !important}
     .p4d-patient-sec{break-inside:avoid;margin-bottom:14pt}
     .p4d-grid{grid-template-columns:repeat(3,1fr) !important;gap:6pt !important;
       background:#fff !important;padding:8pt !important}
     .p4d-card{break-inside:avoid;box-shadow:none !important;border:0.5pt solid #c8d4e3 !important}
     .p4d-lap,.p4d-diag{font-size:8.5pt !important;line-height:1.4 !important}
     .p4d-cb{padding:5pt 7pt !important}
-    body{background:#fff !important}
     .p4d-chip-ppi{background:#fdecc8 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .p4d-pagi .p4d-ch{background:#e6f7ec !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .p4d-sore .p4d-ch{background:#fff7e0 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -191,11 +184,11 @@
         </div>
       </div>
     </div>
-    <div class="p4d-cnt" id="p4d-cnt">Memuat data pasien hari ini…</div>
+    <div class="status-bar status-bar--joined" id="p4d-cnt">Memuat data pasien hari ini…</div>
   </div>
 
   <div class="p4d-scroll" id="p4d-scroll">
-    <div class="p4d-print-title">
+    <div class="print-header print-header--compact">
       <h1>Laporan Dinas — IPI Goretty RS St. Carolus</h1>
       <p id="p4d-print-sub"></p>
     </div>

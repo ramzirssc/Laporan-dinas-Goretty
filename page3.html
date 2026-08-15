@@ -11,9 +11,6 @@
     border-radius:var(--radius-sm);background:var(--field-active-bg);color:var(--field-active-text);
     -webkit-appearance:none;appearance:none;transition:border-color .18s,box-shadow .18s;}
   .ff input:focus,.ff select:focus{outline:none;border-color:var(--blue-focus);box-shadow:0 0 0 3px var(--blue-lt);}
-  .p3-cnt{font-size:12px;color:var(--muted);font-style:italic;
-    padding:5px 14px;background:var(--surface2);
-    border:1px solid var(--border-soft);border-top:none;border-bottom:none;flex-shrink:0;}
   .p3-scroll{flex:1;overflow-y:auto;overflow-x:auto;
     background:var(--surface);border:1px solid var(--border-soft);
     border-top:none;border-radius:0 0 var(--radius-lg) var(--radius-lg);box-shadow:var(--shadow);}
@@ -98,17 +95,12 @@
   .p3-ed-ab select,.p3-ed-ab input{height:28px;padding:0 6px;font-size:11px;border:1px solid var(--border);
     border-radius:var(--radius-sm);background:var(--field-active-bg);color:var(--field-active-text)}
 
-  /* ── PRINT ── */
-  .p3-print-header{display:none;margin-bottom:10pt;padding-bottom:6pt;
-    border-bottom:1pt solid #c8d4e3}
-  .p3-print-header h1{font-size:14pt;font-weight:700;color:#1e3f62}
-  .p3-print-header p{font-size:10pt;color:#555;margin-top:3pt}
+  /* ── PRINT ── (.topbar, .noprint, body{background:#fff} sudah global di index.html) */
   @media print{
-    .topbar,.p3-top{display:none !important}
+    .p3-top{display:none !important}
     .p3-outer{height:auto !important;display:block !important}
     .p3-scroll{overflow:visible !important;border:none !important;
       border-radius:0 !important;box-shadow:none !important;height:auto !important}
-    .p3-print-header{display:block !important}
     .p3t{font-size:9pt !important;min-width:unset !important}
     .p3t thead tr th{padding:5pt 7pt !important;font-size:8pt !important}
     .p3t tbody td{padding:5pt 7pt !important;font-size:9pt !important}
@@ -119,7 +111,6 @@
     .chip{background:#ddeaf8 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .chip-ppi{background:#fdecc8 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .nomor-cell{color:#274f7c !important}
-    body{background:#fff !important}
     .btn-edit-sm,.btn-save-sm,.btn-cancel-sm,.p3-ed{display:none !important}
   }
 
@@ -156,11 +147,11 @@
         </div>
       </div>
     </div>
-    <div class="p3-cnt" id="p3-cnt">Memuat…</div>
+    <div class="status-bar status-bar--joined" id="p3-cnt">Memuat…</div>
   </div>
   <div class="p3-scroll" id="p3-scroll-area">
     <!-- Header cetak: tersembunyi di layar, muncul saat print -->
-    <div class="p3-print-header" id="p3-print-header">
+    <div class="print-header" id="p3-print-header">
       <h1>Lihat Laporan — IPI Goretty RS St. Carolus</h1>
       <p id="p3-print-sub"></p>
     </div>
