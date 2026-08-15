@@ -13,9 +13,6 @@
     -webkit-appearance:none;appearance:none}
   .p9-f select:focus{outline:none;border-color:var(--blue-focus);box-shadow:0 0 0 3px var(--blue-lt)}
   .p9-info{font-size:11px;color:var(--muted);font-style:italic;margin-left:auto;align-self:center}
-  .p9-status{font-size:12px;color:var(--muted);font-style:italic;
-    padding:5px 14px;background:var(--surface2);border:1px solid var(--border-soft);
-    border-radius:var(--radius-sm);margin-bottom:12px}
 
   .p9-sum{display:flex;flex-wrap:wrap;gap:10px}
   .p9-sum-item{flex:1;min-width:120px;background:var(--surface2);border:1px solid var(--border-soft);
@@ -51,13 +48,8 @@
   .p9-tindlist li{margin-bottom:2px}
   .p9-tbl.p9-dtbl tbody td.p9-dt-tgl{white-space:nowrap}
 
-  .p9-print-header{display:none;margin-bottom:10pt;padding-bottom:6pt;border-bottom:1pt solid #c8d4e3}
-  .p9-print-header h1{font-size:14pt;font-weight:700;color:#1e3f62}
-  .p9-print-header p{font-size:10pt;color:#555;margin-top:3pt}
   @media print{
-    .topbar,.p9-bar,.p9-status,.p9-noprint{display:none !important}
-    .p9-print-header{display:block !important}
-    body{background:#fff !important}
+    .topbar,.p9-bar,#p9-status{display:none !important}
     .card{box-shadow:none !important;border:1px solid #ccc !important}
   }
 
@@ -72,11 +64,11 @@
   <div class="p9-f"><label>Perawat</label><select id="p9-perawat"></select></div>
   <div class="p9-f"><label>Bulan</label><select id="p9-bulan"></select></div>
   <div class="p9-f"><label>Tahun</label><select id="p9-tahun"></select></div>
-  <button class="btn btn-outline p9-noprint" id="p9-btn-cetak" style="display:none;gap:5px" onclick="p9Cetak()">🖨 Cetak PDF</button>
+  <button class="btn btn-outline noprint" id="p9-btn-cetak" style="display:none;gap:5px" onclick="p9Cetak()">🖨 Cetak PDF</button>
   <span class="p9-info" id="p9-genat"></span>
 </div>
-<div class="p9-status" id="p9-status">Memuat…</div>
-<div class="p9-print-header" id="p9-print-header">
+<div class="status-bar" id="p9-status">Memuat…</div>
+<div class="print-header" id="p9-print-header">
   <h1>Logbook Perawat — IPI Goretty RS St. Carolus</h1>
   <p id="p9-print-sub"></p>
 </div>
