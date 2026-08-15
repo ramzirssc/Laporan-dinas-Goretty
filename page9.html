@@ -46,10 +46,10 @@
 
   .p9-nodata{text-align:center;padding:40px;color:var(--muted);font-style:italic}
 
-  .p9-dtbl td{white-space:normal;text-align:left;vertical-align:top}
+  .p9-tbl.p9-dtbl tbody td{white-space:normal;text-align:left;vertical-align:top}
   .p9-tindlist{margin:0;padding-left:16px}
   .p9-tindlist li{margin-bottom:2px}
-  .p9-dtbl td.p9-dt-tgl{white-space:nowrap}
+  .p9-tbl.p9-dtbl tbody td.p9-dt-tgl{white-space:nowrap}
 
   .p9-print-header{display:none;margin-bottom:10pt;padding-bottom:6pt;border-bottom:1pt solid #c8d4e3}
   .p9-print-header h1{font-size:14pt;font-weight:700;color:#1e3f62}
@@ -292,7 +292,7 @@ function p9LoadDetail(npk,tahun,bulan){
 function p9RenderDetail(list){
   if(!list||!list.length) return '<div class="p9-nodata">Tidak ada entri Proses Form Goretty pada periode ini.</div>';
   var h='<div class="p9-scroll"><table class="p9-tbl p9-dtbl"><thead><tr>'
-    +'<th>Tanggal</th><th>Pasien</th><th>Tindakan yang Dilakukan</th><th>Catatan</th>'
+    +'<th>Tanggal</th><th>Pasien</th><th>Tindakan yang Dilakukan</th>'
     +'</tr></thead><tbody>';
   list.forEach(function(it){
     h+='<tr><td class="p9-dt-tgl">'+esc(p9fmtTglDMY(it.tanggal))+'</td>'
@@ -302,7 +302,7 @@ function p9RenderDetail(list){
       it.tindakan.forEach(function(t){h+='<li><strong>'+esc(t.domain)+':</strong> '+esc(t.teks)+'</li>';});
       h+='</ul>';
     }else{ h+='—'; }
-    h+='</td><td>'+esc(it.catatan||'—')+'</td></tr>';
+    h+='</td></tr>';
   });
   h+='</tbody></table></div>';
   return h;
