@@ -364,8 +364,28 @@ Halaman statistik logbook perawat. **HANYA MEMBACA** spreadsheet eksternal via `
 
 ### Sumber data
 - Spreadsheet `11pJK2JfLt1Zv1iJN4YFSakGo65Yn4daw2hFm0DXJX1M`.
-- Sheet data **`Proses form`**; sheet master **`LookUp`**.
+- Sheet data **`Proses form`**; sheet master **`LookUp`**; sheet kontribusi **`kontribusi damianus`**.
 - 8 domain: `["Oksigen","Obat","Cairan","TTV","Dokumen","Kebutuhan","Asuhan","Alat"]`.
+
+### Kontribusi Damianus
+Sebagian perawat Goretty kadang ditugaskan ke Damianus; logbook mereka di sana dicatat manual
+per bulan pada sheet **`kontribusi damianus`** (bukan per-entri seperti `Proses form`).
+- Kolom `A:F` = NPK, Nama, Bulan, Jumlah Tindakan, Total Nilai, Nilai sesuai PK.
+- Kolom **Bulan** boleh berupa `Date` (ditampilkan format `yyyy-MMM`, mis. `2026-Agu`) atau teks literal
+  `"2026-Agu"` — `lbGParseBulanKontribusi_()` menangani keduanya. Abbreviation Indonesia:
+  `LBG_BULAN_ABBR` (jan..des).
+- Total Nilai & Nilai sesuai PK adalah **pecahan** (sama seperti nilai Goretty asli); Jumlah Tindakan
+  adalah **hitungan mentah** (bukan pecahan).
+- `lbGDamianus_()` membaca seluruh sheet → `{npk: {"tahun-bulan": {jumlahTindakan, totalNilai, nilaiSesuaiPK}}}`.
+  Baris duplikat utk kombinasi npk+bulan yang sama dijumlahkan.
+- Setiap baris hasil `getAgregatTahunGoretty` mendapat 6 field tambahan: `jumlahTindakanDamianus`,
+  `totalNilaiDamianus`, `nilaiSesuaiPKDamianus`, dan **Gabungan** (`jumlahTindakanGabungan` dst
+  = nilai Goretty + nilai Damianus, elemen-per-elemen).
+- npk+bulan yang **hanya** punya kontribusi Damianus (tanpa aktivitas `Proses form` di bulan itu)
+  tetap dimunculkan sebagai baris tersendiri, dengan nilai Goretty nol — begitu juga tahunnya ikut
+  masuk `getTahunTersediaGoretty()` (union tahun `Proses form` ∪ tahun `kontribusi damianus`).
+- Cache payload berubah format → key server dibump ke `agg_goretty2_<tahun>` (lihat §4 CLAUDE.md:
+  bump nama key bila format payload berubah).
 
 ### Pemetaan kolom (0-based saat baca A:DC = 107 kolom)
 | Konstanta | Idx | Kolom | Isi |
@@ -382,22 +402,25 @@ Target hardcode: `{ I:80, II:80, III:75, IV:80, V:43 }`. PK number: `{ I:1..V:5 
 ### Fungsi backend (read-only)
 - `getInitGoretty()` → `{perawat:[{npk,nama,pk}], tahun:number[]}` — **init 1 round-trip** (gabungan `getDaftarPerawatGoretty` + `getTahunTersediaGoretty`; output identik). Dipakai `initP9`.
 - `getDaftarPerawatGoretty()` → `[{npk, nama, pk}]` (urut nama).
-- `getTahunTersediaGoretty()` → `number[]` (tahun yang ada datanya).
-- `getAgregatTahunGoretty(tahun, force?)` → agregat 1 tahun untuk SEMUA perawat (JSON). Cache server `agg_goretty_<tahun>` **ber-chunk** (TTL 30 menit tahun berjalan / 6 jam tahun lampau).
+- `getTahunTersediaGoretty()` → `number[]` (tahun yang ada datanya; union `Proses form` ∪ `kontribusi damianus`).
+- `getAgregatTahunGoretty(tahun, force?)` → agregat 1 tahun untuk SEMUA perawat, termasuk field Damianus & Gabungan (JSON). Cache server `agg_goretty2_<tahun>` **ber-chunk** (TTL 30 menit tahun berjalan / 6 jam tahun lampau).
+- `getDetailLogbookGoretty(npk, tahun, bulan)` → `[{tanggal, pasien, tindakan:[{domain,teks}], catatan}]` — rincian per-entri `Proses form` 1 perawat × 1 bulan (nama pasien + teks tindakan yang dipilih per domain). Dipanggil on-demand hanya saat 1 perawat dipilih (bukan bagian payload `getAgregatTahunGoretty`, agar payload rekap tetap ringan). **Tidak** mencakup kontribusi Damianus (sheet itu agregat bulanan saja, tanpa rincian pasien/tindakan per-entri).
 - `lbGDebugPerawat(npk, tahun)` → rincian per-baris (validasi manual).
 
 ### Agregasi (per perawat × bulan)
 - `domain[d] = Σ baris Σ_{k=0..4} angka(r[19 + d*5 + k])`; `jumlahTindakan = Σ domain`.
 - `nilaiPK[n] = Σ baris angka(r[100+n])` (n=0..4); `totalNilai = Σ nilaiPK`; `nilaiSesuaiPK = nilaiPK[pkNumber-1]`.
 - Nilai dikirim sebagai **pecahan**; format `%` di klien (`P9_FACTOR = 100`, 2 desimal koma).
+- Ditambah field Damianus (dari `kontribusi damianus`, lihat di atas) dan Gabungan (Goretty + Damianus).
 
 ### Frontend (prefiks `p9`)
-- **Init 1 server call** (`getInitGoretty` → perawat + tahun) lalu **1 call per tahun** (`getAgregatTahunGoretty`); ganti bulan/perawat di-handle dari cache klien in-memory (tanpa server).
+- **Init 1 server call** (`getInitGoretty` → perawat + tahun) lalu **1 call per tahun** (`getAgregatTahunGoretty`); ganti bulan/perawat di-handle dari cache klien in-memory (tanpa server). Saat 1 perawat dipilih, **1 call tambahan** `getDetailLogbookGoretty` (untuk frame detail — lihat di bawah).
 - Filter Perawat/Bulan/Tahun; default Semua perawat + bulan & tahun berjalan.
-- Tampilan 1 perawat: kartu ringkasan + tabel 8 domain + tabel 5 PK.
-- Tampilan "Semua perawat": tabel rekap (NPK/Nama sticky, scroll horizontal) + **baris RATA-RATA**.
+- Tampilan 1 perawat: kartu ringkasan (Goretty asli), kartu **Kontribusi Damianus**, kartu **Gabungan**, tabel 8 domain, tabel 5 PK, lalu frame **"Detail Pasien & Tindakan"** paling bawah (tabel tanggal/pasien/tindakan per domain/catatan dari `Proses form`; kosong bila bulan itu kontribusinya murni dari Damianus).
+- Tampilan "Semua perawat": tabel rekap (NPK/Nama sticky, scroll horizontal) + 6 kolom tambahan (Jml Tindakan/Total %/Sesuai PK % × Damianus, lalu × Gabungan) + **baris RATA-RATA**.
+- **Cetak PDF**: tombol muncul hanya saat 1 perawat dipilih (`p9Cetak()` → `window.print()`, pola sama seperti Page3 — header cetak tersembunyi di layar via `.p9-print-header`, muncul saat print; `@media print` menyembunyikan topbar/filter/tombol). Mencetak persis apa yang tampil di layar utk periode terpilih (ringkasan + domain + PK + Damianus/Gabungan + detail pasien).
 
-> **Validasi:** cocokkan dengan rekap Goretty (≥3 perawat × 2 bulan). Konfirmasi faktor `×100` (`P9_FACTOR`); bila rekap menampilkan desimal mentah, set `P9_FACTOR = 1`.
+> **Validasi:** cocokkan dengan rekap Goretty (≥3 perawat × 2 bulan). Konfirmasi faktor `×100` (`P9_FACTOR`); bila rekap menampilkan desimal mentah, set `P9_FACTOR = 1`. Untuk kolom Damianus, cocokkan langsung dengan isi sheet `kontribusi damianus` (npk+bulan yang sama).
 
 ---
 

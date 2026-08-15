@@ -1271,12 +1271,17 @@ function pasangTriggerMalam() {
 var LBG_SS_ID  = '11pJK2JfLt1Zv1iJN4YFSakGo65Yn4daw2hFm0DXJX1M';
 var LBG_SHEET  = 'Proses form';
 var LBG_LOOKUP = 'LookUp';
+var LBG_SHEET_DAMIANUS = 'kontribusi damianus'; // A:NPK B:Nama C:Bulan("yyyy-MMM"/Date) D:Jumlah Tindakan E:Total Nilai F:Nilai sesuai PK
 
 var LBG_DOMAINS    = ["Oksigen","Obat","Cairan","TTV","Dokumen","Kebutuhan","Asuhan","Alat"];
 var LBG_TARGET_MAP = { "I":80, "II":80, "III":75, "IV":80, "V":43 };
 var LBG_PK_NUMBER  = { "I":1, "II":2, "III":3, "IV":4, "V":5 };
+var LBG_BULAN_ABBR = { jan:1, feb:2, mar:3, apr:4, mei:5, jun:6, jul:7, agu:8, sep:9, okt:10, nov:11, des:12 };
 
 // Indeks 0-based saat baca A:DC (kolom 1..107)
+var LBG_IDX_PASIEN  = 2;                       // C  = Daftar pasien hari ini
+var LBG_TEXT_START  = 3;                       // D  = Kompetensi Oksigenasi (teks tindakan, urutan = LBG_DOMAINS)
+var LBG_IDX_CATATAN = 11;                      // L  = Catatan kegiatan
 var LBG_IDX_TGL    = 16;                       // Q  = Tanggal
 var LBG_IDX_NPK    = 17;                       // R  = NPK
 var LBG_FLAG_START = 19;                       // T  = flag domain pertama (0-based)
@@ -1328,6 +1333,48 @@ function lbGLookup_() {
   return map;
 }
 
+// Kontribusi Damianus: NPK -> "tahun-bulan" -> {jumlahTindakan, totalNilai, nilaiSesuaiPK}.
+// Baris duplikat utk npk+bulan yang sama (jaga2) dijumlahkan.
+function lbGDamianus_() {
+  var map = {};
+  try {
+    var sh = SpreadsheetApp.openById(LBG_SS_ID).getSheetByName(LBG_SHEET_DAMIANUS);
+    if(!sh) return map;
+    var lr = sh.getLastRow();
+    if(lr < 2) return map;
+    var vals = sh.getRange(2, 1, lr - 1, 6).getValues(); // A:F
+    vals.forEach(function(r) {
+      var npk = String(r[0] == null ? '' : r[0]).trim();
+      if(!npk) return;
+      var ym = lbGParseBulanKontribusi_(r[2]);
+      if(!ym) return;
+      var key = ym.tahun + '-' + ym.bulan;
+      if(!map[npk]) map[npk] = {};
+      var cur = map[npk][key] || { jumlahTindakan: 0, totalNilai: 0, nilaiSesuaiPK: 0 };
+      cur.jumlahTindakan += lbGNum_(r[3]);
+      cur.totalNilai     += lbGNum_(r[4]);
+      cur.nilaiSesuaiPK  += lbGNum_(r[5]);
+      map[npk][key] = cur;
+    });
+  } catch(e) {}
+  return map;
+}
+
+// Kolom "Bulan" bisa berupa Date (ditampilkan format "yyyy-MMM") atau teks "2026-Agu".
+function lbGParseBulanKontribusi_(v) {
+  if(v instanceof Date) {
+    var tz = Session.getScriptTimeZone();
+    return { tahun: parseInt(Utilities.formatDate(v, tz, 'yyyy'), 10),
+             bulan: parseInt(Utilities.formatDate(v, tz, 'M'), 10) };
+  }
+  var s = String(v == null ? '' : v).trim();
+  var m = s.match(/^(\d{4})-([A-Za-z]{3,})$/);
+  if(!m) return null;
+  var bln = LBG_BULAN_ABBR[m[2].toLowerCase().slice(0, 3)];
+  if(!bln) return null;
+  return { tahun: parseInt(m[1], 10), bulan: bln };
+}
+
 function getDaftarPerawatGoretty() {
   var map = lbGLookup_();
   var arr = Object.keys(map).map(function(npk) {
@@ -1340,17 +1387,27 @@ function getDaftarPerawatGoretty() {
 function getTahunTersediaGoretty() {
   var tz = Session.getScriptTimeZone();
   var sh = SpreadsheetApp.openById(LBG_SS_ID).getSheetByName(LBG_SHEET);
-  if(!sh) return JSON.stringify([]);
-  var lr = sh.getLastRow();
-  if(lr < 2) return JSON.stringify([]);
-  var data = sh.getRange(2, 1, lr - 1, 17).getValues(); // A:Q (cukup untuk tanggal)
   var set = {};
-  data.forEach(function(r) {
-    var d = lbGRowDate_(r);
-    if(d instanceof Date) {
-      var y = parseInt(Utilities.formatDate(d, tz, 'yyyy'), 10);
-      if(y) set[y] = true;
+  if(sh) {
+    var lr = sh.getLastRow();
+    if(lr >= 2) {
+      var data = sh.getRange(2, 1, lr - 1, 17).getValues(); // A:Q (cukup untuk tanggal)
+      data.forEach(function(r) {
+        var d = lbGRowDate_(r);
+        if(d instanceof Date) {
+          var y = parseInt(Utilities.formatDate(d, tz, 'yyyy'), 10);
+          if(y) set[y] = true;
+        }
+      });
     }
+  }
+  // Sertakan tahun yang hanya punya kontribusi Damianus (tanpa aktivitas Goretty).
+  var damianus = lbGDamianus_();
+  Object.keys(damianus).forEach(function(npk) {
+    Object.keys(damianus[npk]).forEach(function(key) {
+      var y = parseInt(key.split('-')[0], 10);
+      if(y) set[y] = true;
+    });
   });
   var years = Object.keys(set).map(Number).sort(function(a, b) { return b - a; });
   return JSON.stringify(years);
@@ -1369,7 +1426,7 @@ function getInitGoretty() {
 function getAgregatTahunGoretty(tahun, force) {
   tahun = parseInt(tahun, 10);
   var cache = CacheService.getScriptCache();
-  var baseKey = 'agg_goretty_' + tahun;
+  var baseKey = 'agg_goretty2_' + tahun; // v2: +kontribusi Damianus & Gabungan
   if(!force) {
     var got = lbGCacheGet_(cache, baseKey);
     if(got) return got;
@@ -1382,37 +1439,54 @@ function getAgregatTahunGoretty(tahun, force) {
 function lbGComputeTahun_(tahun) {
   var tz = Session.getScriptTimeZone();
   var lookup = lbGLookup_();
+  var damianus = lbGDamianus_();
   var sh = SpreadsheetApp.openById(LBG_SS_ID).getSheetByName(LBG_SHEET);
-  if(!sh) return JSON.stringify({ tahun: tahun, generatedAt: lbGNow_(tz), bulanTersedia: [], rows: [] });
-  var lr = sh.getLastRow();
-  if(lr < 2) return JSON.stringify({ tahun: tahun, generatedAt: lbGNow_(tz), bulanTersedia: [], rows: [] });
-
-  var data = sh.getRange(2, 1, lr - 1, LBG_READ_NCOLS).getValues(); // A:DC
-  var agg = {};         // npk -> bulan -> {domain[8], nilaiPK[5], jumlahTindakan}
+  var agg = {};          // npk -> bulan -> {domain[8], nilaiPK[5], jumlahTindakan}
   var bulanSet = {};
 
-  data.forEach(function(r) {
-    var d = lbGRowDate_(r);
-    if(!(d instanceof Date)) return;
-    if(parseInt(Utilities.formatDate(d, tz, 'yyyy'), 10) !== tahun) return;
-    var bulan = parseInt(Utilities.formatDate(d, tz, 'M'), 10); // 1..12
-    var npk = String(r[LBG_IDX_NPK] == null ? '' : r[LBG_IDX_NPK]).trim();
-    if(!npk) return; // edge: NPK kosong → tidak bisa diatribusikan
+  if(sh) {
+    var lr = sh.getLastRow();
+    if(lr >= 2) {
+      var data = sh.getRange(2, 1, lr - 1, LBG_READ_NCOLS).getValues(); // A:DC
+      data.forEach(function(r) {
+        var d = lbGRowDate_(r);
+        if(!(d instanceof Date)) return;
+        if(parseInt(Utilities.formatDate(d, tz, 'yyyy'), 10) !== tahun) return;
+        var bulan = parseInt(Utilities.formatDate(d, tz, 'M'), 10); // 1..12
+        var npk = String(r[LBG_IDX_NPK] == null ? '' : r[LBG_IDX_NPK]).trim();
+        if(!npk) return; // edge: NPK kosong → tidak bisa diatribusikan
 
-    if(!agg[npk]) agg[npk] = {};
-    if(!agg[npk][bulan]) {
-      agg[npk][bulan] = { domain: [0,0,0,0,0,0,0,0], nilaiPK: [0,0,0,0,0], jumlahTindakan: 0 };
+        if(!agg[npk]) agg[npk] = {};
+        if(!agg[npk][bulan]) {
+          agg[npk][bulan] = { domain: [0,0,0,0,0,0,0,0], nilaiPK: [0,0,0,0,0], jumlahTindakan: 0 };
+        }
+        var slot = agg[npk][bulan];
+        for(var dm = 0; dm < LBG_NDOMAIN; dm++) {
+          var base = LBG_FLAG_START + dm * 5;
+          var dc = 0;
+          for(var k = 0; k < 5; k++) dc += lbGNum_(r[base + k]);
+          slot.domain[dm] += dc;
+          slot.jumlahTindakan += dc;
+        }
+        for(var n = 0; n < 5; n++) slot.nilaiPK[n] += lbGNum_(r[LBG_IDX_NILAI[n]]);
+        bulanSet[bulan] = true;
+      });
     }
-    var slot = agg[npk][bulan];
-    for(var dm = 0; dm < LBG_NDOMAIN; dm++) {
-      var base = LBG_FLAG_START + dm * 5;
-      var dc = 0;
-      for(var k = 0; k < 5; k++) dc += lbGNum_(r[base + k]);
-      slot.domain[dm] += dc;
-      slot.jumlahTindakan += dc;
-    }
-    for(var n = 0; n < 5; n++) slot.nilaiPK[n] += lbGNum_(r[LBG_IDX_NILAI[n]]);
-    bulanSet[bulan] = true;
+  }
+
+  // npk+bulan yang HANYA punya kontribusi Damianus (tanpa aktivitas Goretty bulan itu)
+  // tetap dimunculkan sebagai baris, dengan nilai Goretty nol.
+  Object.keys(damianus).forEach(function(npk) {
+    Object.keys(damianus[npk]).forEach(function(key) {
+      var parts = key.split('-');
+      var y = parseInt(parts[0], 10), bln = parseInt(parts[1], 10);
+      if(y !== tahun) return;
+      if(!agg[npk]) agg[npk] = {};
+      if(!agg[npk][bln]) {
+        agg[npk][bln] = { domain: [0,0,0,0,0,0,0,0], nilaiPK: [0,0,0,0,0], jumlahTindakan: 0 };
+      }
+      bulanSet[bln] = true;
+    });
   });
 
   var rows = [];
@@ -1425,6 +1499,9 @@ function lbGComputeTahun_(tahun) {
       var domObj = {};
       for(var i = 0; i < LBG_NDOMAIN; i++) domObj[LBG_DOMAINS[i]] = s.domain[i];
       var totalNilai = s.nilaiPK.reduce(function(a, b) { return a + b; }, 0);
+      var nilaiSesuaiPK = pkNumber ? s.nilaiPK[pkNumber - 1] : 0;
+      var dmn = (damianus[npk] && damianus[npk][tahun + '-' + bln]) ||
+                { jumlahTindakan: 0, totalNilai: 0, nilaiSesuaiPK: 0 };
       rows.push({
         npk: npk, nama: info.nama, pk: info.pk, pkNumber: pkNumber, target: target,
         bulan: parseInt(bln, 10),
@@ -1432,7 +1509,13 @@ function lbGComputeTahun_(tahun) {
         domain: domObj,
         nilaiPK: s.nilaiPK,
         totalNilai: totalNilai,
-        nilaiSesuaiPK: pkNumber ? s.nilaiPK[pkNumber - 1] : 0
+        nilaiSesuaiPK: nilaiSesuaiPK,
+        jumlahTindakanDamianus: dmn.jumlahTindakan,
+        totalNilaiDamianus: dmn.totalNilai,
+        nilaiSesuaiPKDamianus: dmn.nilaiSesuaiPK,
+        jumlahTindakanGabungan: s.jumlahTindakan + dmn.jumlahTindakan,
+        totalNilaiGabungan: totalNilai + dmn.totalNilai,
+        nilaiSesuaiPKGabungan: nilaiSesuaiPK + dmn.nilaiSesuaiPK
       });
     });
   });
@@ -1503,6 +1586,40 @@ function lbGDebugPerawat(npk, tahun) {
       nilaiSesuaiPKdb: lbGNum_(r[105])    // DB
     });
   });
+  return JSON.stringify(out);
+}
+
+// Detail per-entry (READ-ONLY): nama pasien + tindakan tiap domain, untuk 1 perawat × 1 bulan.
+// Dipakai frame "Detail Pasien & Tindakan" (Page9) — hanya dipanggil saat 1 perawat dipilih.
+function getDetailLogbookGoretty(npk, tahun, bulan) {
+  tahun = parseInt(tahun, 10); bulan = parseInt(bulan, 10);
+  var tz = Session.getScriptTimeZone();
+  var sh = SpreadsheetApp.openById(LBG_SS_ID).getSheetByName(LBG_SHEET);
+  if(!sh) return JSON.stringify([]);
+  var lr = sh.getLastRow();
+  if(lr < 2) return JSON.stringify([]);
+  var data = sh.getRange(2, 1, lr - 1, LBG_READ_NCOLS).getValues();
+  var tgtNpk = String(npk).trim();
+  var out = [];
+  data.forEach(function(r) {
+    if(String(r[LBG_IDX_NPK] == null ? '' : r[LBG_IDX_NPK]).trim() !== tgtNpk) return;
+    var d = lbGRowDate_(r);
+    if(!(d instanceof Date)) return;
+    if(parseInt(Utilities.formatDate(d, tz, 'yyyy'), 10) !== tahun) return;
+    if(parseInt(Utilities.formatDate(d, tz, 'M'), 10) !== bulan) return;
+    var tindakan = [];
+    for(var dm = 0; dm < LBG_NDOMAIN; dm++) {
+      var txt = String(r[LBG_TEXT_START + dm] == null ? '' : r[LBG_TEXT_START + dm]).trim();
+      if(txt) tindakan.push({ domain: LBG_DOMAINS[dm], teks: txt });
+    }
+    out.push({
+      tanggal: Utilities.formatDate(d, tz, 'yyyy-MM-dd'),
+      pasien: String(r[LBG_IDX_PASIEN] == null ? '' : r[LBG_IDX_PASIEN]).trim(),
+      tindakan: tindakan,
+      catatan: String(r[LBG_IDX_CATATAN] == null ? '' : r[LBG_IDX_CATATAN]).trim()
+    });
+  });
+  out.sort(function(a, b) { return a.tanggal < b.tanggal ? -1 : (a.tanggal > b.tanggal ? 1 : 0); });
   return JSON.stringify(out);
 }
 
