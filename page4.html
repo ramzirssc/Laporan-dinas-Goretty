@@ -120,7 +120,7 @@
     .p4d-outer{height:auto !important;display:block !important}
     .p4d-scroll{overflow:visible !important;border:none !important;padding:0 !important;
       box-shadow:none !important;background:#fff !important}
-    .p4d-search-bar,.p4d-sel-bar,.p4d-sep-bar,.p4df,#p4d-cnt,.btn-print4{display:none !important}
+    .p4d-search-bar,.p4d-sel-bar,.p4d-sep-bar,.p4df,#p4d-cnt,.btn-print4,.filt-toggle{display:none !important}
     .p4d-patient-sec{break-inside:avoid;margin-bottom:14pt}
     .p4d-grid{grid-template-columns:repeat(3,1fr) !important;gap:6pt !important;
       background:#fff !important;padding:8pt !important}
@@ -166,7 +166,10 @@
     <!-- Separator -->
     <div class="p4d-sep-bar">— atau pilih dari pasien hari ini (6 laporan terakhir) —</div>
     <!-- ② PASIEN HARI INI -->
-    <div class="p4df">
+    <button type="button" class="filt-toggle" id="p4d-filt-toggle" onclick="p4dToggleFilter()">
+      <span>🔍 Filter</span> <span class="chev">▾</span>
+    </button>
+    <div class="p4df filt-collapsible" id="p4df">
       <div class="p4df-row">
         <div class="ff4"><label>Dari</label>
           <input type="date" id="p4d-dari" disabled style="width:130px"></div>
@@ -198,6 +201,10 @@
 </div>
 
 <script>
+function p4dToggleFilter(){
+  document.getElementById('p4df').classList.toggle('open');
+  document.getElementById('p4d-filt-toggle').classList.toggle('open');
+}
 var p4dMode = 'hari';   // 'hari' | 'search'
 var p4dSearchRes = [];
 var p4dTimer = null;

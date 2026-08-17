@@ -116,14 +116,18 @@
 
   @media(max-width:767px){
     .p3-outer{height:calc(100vh - var(--topbar-h) - 20px);}
-    .p3f{padding:9px 10px}.p3f-row{gap:7px}
+    .p3f{padding:9px 10px;border-radius:0}.p3f-row{gap:7px}
     .ff input,.ff select{height:40px;font-size:12px}
+    .filt-toggle{border-radius:var(--radius-lg) var(--radius-lg) 0 0}
   }
 </style>
 
 <div class="p3-outer">
   <div class="p3-top">
-    <div class="p3f">
+    <button type="button" class="filt-toggle" id="p3-filt-toggle" onclick="p3ToggleFilter()">
+      <span>🔍 Filter</span> <span class="chev">▾</span>
+    </button>
+    <div class="p3f filt-collapsible" id="p3f">
       <div class="p3f-row">
         <div class="ff"><label>Dari</label><input type="date" id="f-dari" style="width:132px"></div>
         <div class="ff" style="justify-content:flex-end;padding-bottom:5px">
@@ -172,6 +176,10 @@
 </div>
 
 <script>
+function p3ToggleFilter(){
+  document.getElementById('p3f').classList.toggle('open');
+  document.getElementById('p3-filt-toggle').classList.toggle('open');
+}
 var p3c=[];
 // §5 — daftar checklist (id+label) + opsi antibiotik, 1 pembacaan server saat load
 // (bukan google.script.run terpisah tiap klik Edit).
