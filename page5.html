@@ -33,10 +33,18 @@
    font-weight:600;cursor:pointer;white-space:nowrap}
  .p5wiz-exit:hover:not(:disabled),.p5wiz-nav:hover:not(:disabled){background:rgba(255,255,255,.28)}
  .p5wiz-nav:disabled{opacity:.4;cursor:not-allowed}
+ /* Baris antibiotik (Nama/Freq/Dosis/Per) -- grid khusus terpisah dari .grid.g4
+    supaya proporsi Nama bisa diperkecil untuk menampung dropdown Per (§2.1). */
+ .p5-ab-list{display:flex;flex-direction:column;gap:8px}
+ .p5-ab-row{display:grid;grid-template-columns:1fr .8fr 1.4fr .8fr;gap:13px}
  @media(max-width:767px){
    .p5h{padding:10px 14px}.p5h h2{font-size:15px}
    .act-bar5{padding:10px 14px;gap:8px}
    .act-hint5{width:100%;text-align:center}
+   .p5-ab-row{grid-template-columns:1fr 1fr}
+ }
+ @media(max-width:480px){
+   .p5-ab-row{grid-template-columns:1fr}
  }
 </style>
 
@@ -143,41 +151,61 @@
 </div>
 <div class="card">
  <div class="card-title">Antibiotik</div>
- <div class="grid g4" style="row-gap:8px">
-   <div class="field"><label>Antibiotik 1</label>
-     <select id="p5abNama1" disabled><option value="">— tidak ada —</option><?!= opsiantibiotik() ?></select></div>
-   <div class="field"><label>Frekuensi</label>
-     <select id="p5abFreq1" disabled><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></div>
-   <div class="field" style="grid-column:span 2"><label>Dosis</label>
-     <input type="text" id="p5abDosis1" placeholder="Teks bebas contoh: 100 mg, 200 mg, 1 gram" disabled></div>
+ <div class="p5-ab-list">
+   <div class="p5-ab-row">
+     <div class="field"><label>Antibiotik 1</label>
+       <select id="p5abNama1" disabled><option value="">— tidak ada —</option><?!= opsiantibiotik() ?></select></div>
+     <div class="field"><label>Frekuensi</label>
+       <select id="p5abFreq1" disabled><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></div>
+     <div class="field"><label>Dosis</label>
+       <input type="text" id="p5abDosis1" placeholder="Teks bebas contoh: 100 mg, 200 mg, 1 gram" disabled></div>
+     <div class="field"><label>Per</label>
+       <select id="p5abPer1" disabled><option value="24">24 jam</option><option value="36">36 jam</option><option value="48">48 jam</option><option value="72">72 jam</option></select></div>
+   </div>
 
-   <div class="field"><label>Antibiotik 2</label>
-     <select id="p5abNama2" disabled><option value="">— tidak ada —</option><?!= opsiantibiotik() ?></select></div>
-   <div class="field"><label>Frekuensi</label>
-     <select id="p5abFreq2" disabled><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></div>
-   <div class="field" style="grid-column:span 2"><label>Dosis</label>
-     <input type="text" id="p5abDosis2" placeholder="Teks bebas contoh: 100 mg, 200 mg, 1 gram" disabled></div>
+   <div class="p5-ab-row">
+     <div class="field"><label>Antibiotik 2</label>
+       <select id="p5abNama2" disabled><option value="">— tidak ada —</option><?!= opsiantibiotik() ?></select></div>
+     <div class="field"><label>Frekuensi</label>
+       <select id="p5abFreq2" disabled><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></div>
+     <div class="field"><label>Dosis</label>
+       <input type="text" id="p5abDosis2" placeholder="Teks bebas contoh: 100 mg, 200 mg, 1 gram" disabled></div>
+     <div class="field"><label>Per</label>
+       <select id="p5abPer2" disabled><option value="24">24 jam</option><option value="36">36 jam</option><option value="48">48 jam</option><option value="72">72 jam</option></select></div>
+   </div>
 
-   <div class="field"><label>Antibiotik 3</label>
-     <select id="p5abNama3" disabled><option value="">— tidak ada —</option><?!= opsiantibiotik() ?></select></div>
-   <div class="field"><label>Frekuensi</label>
-     <select id="p5abFreq3" disabled><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></div>
-   <div class="field" style="grid-column:span 2"><label>Dosis</label>
-     <input type="text" id="p5abDosis3" placeholder="Teks bebas contoh: 100 mg, 200 mg, 1 gram" disabled></div>
+   <div class="p5-ab-row">
+     <div class="field"><label>Antibiotik 3</label>
+       <select id="p5abNama3" disabled><option value="">— tidak ada —</option><?!= opsiantibiotik() ?></select></div>
+     <div class="field"><label>Frekuensi</label>
+       <select id="p5abFreq3" disabled><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></div>
+     <div class="field"><label>Dosis</label>
+       <input type="text" id="p5abDosis3" placeholder="Teks bebas contoh: 100 mg, 200 mg, 1 gram" disabled></div>
+     <div class="field"><label>Per</label>
+       <select id="p5abPer3" disabled><option value="24">24 jam</option><option value="36">36 jam</option><option value="48">48 jam</option><option value="72">72 jam</option></select></div>
+   </div>
 
-   <div class="field"><label>Antibiotik 4</label>
-     <select id="p5abNama4" disabled><option value="">— tidak ada —</option><?!= opsiantibiotik() ?></select></div>
-   <div class="field"><label>Frekuensi</label>
-     <select id="p5abFreq4" disabled><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></div>
-   <div class="field" style="grid-column:span 2"><label>Dosis</label>
-     <input type="text" id="p5abDosis4" placeholder="Teks bebas contoh: 100 mg, 200 mg, 1 gram" disabled></div>
+   <div class="p5-ab-row">
+     <div class="field"><label>Antibiotik 4</label>
+       <select id="p5abNama4" disabled><option value="">— tidak ada —</option><?!= opsiantibiotik() ?></select></div>
+     <div class="field"><label>Frekuensi</label>
+       <select id="p5abFreq4" disabled><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></div>
+     <div class="field"><label>Dosis</label>
+       <input type="text" id="p5abDosis4" placeholder="Teks bebas contoh: 100 mg, 200 mg, 1 gram" disabled></div>
+     <div class="field"><label>Per</label>
+       <select id="p5abPer4" disabled><option value="24">24 jam</option><option value="36">36 jam</option><option value="48">48 jam</option><option value="72">72 jam</option></select></div>
+   </div>
 
-   <div class="field"><label>Antibiotik 5</label>
-     <select id="p5abNama5" disabled><option value="">— tidak ada —</option><?!= opsiantibiotik() ?></select></div>
-   <div class="field"><label>Frekuensi</label>
-     <select id="p5abFreq5" disabled><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></div>
-   <div class="field" style="grid-column:span 2"><label>Dosis</label>
-     <input type="text" id="p5abDosis5" placeholder="Teks bebas contoh: 100 mg, 200 mg, 1 gram" disabled></div>
+   <div class="p5-ab-row">
+     <div class="field"><label>Antibiotik 5</label>
+       <select id="p5abNama5" disabled><option value="">— tidak ada —</option><?!= opsiantibiotik() ?></select></div>
+     <div class="field"><label>Frekuensi</label>
+       <select id="p5abFreq5" disabled><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></div>
+     <div class="field"><label>Dosis</label>
+       <input type="text" id="p5abDosis5" placeholder="Teks bebas contoh: 100 mg, 200 mg, 1 gram" disabled></div>
+     <div class="field"><label>Per</label>
+       <select id="p5abPer5" disabled><option value="24">24 jam</option><option value="36">36 jam</option><option value="48">48 jam</option><option value="72">72 jam</option></select></div>
+   </div>
  </div>
 </div>
 <div class="card">
@@ -204,10 +232,11 @@ var P5_LOCK = ['p5tanggal','p5dinas','p5namahidden','p5pasien',
 // Field bebas-teks (bukan checkbox) yang isinya ikut ditulis ke kolom I sbg
 // token Key=Value, SELALU ditulis walau kosong/default (lihat p5Kumpul/p5ApplyKV).
 var P5_PPI_FIELDS = ['p5ppiTindakan','p5ppiKultur','p5ppiSuhu'];
-// Antibiotik: 5 slot x (Nama select + Freq teks bebas + Dosis teks bebas). Slot
-// yang Nama-nya kosong TIDAK ditulis ke kolom I (lihat p5Kumpul).
+// Antibiotik: 5 slot x (Nama select + Freq teks bebas + Dosis teks bebas + Per
+// select interval pemberian). Slot yang Nama-nya kosong TIDAK ditulis ke kolom I
+// (lihat p5Kumpul). Per selalu bernilai (default '24', tak ada opsi kosong).
 var P5_AB_FIELDS = [];
-for(var p5abI=1; p5abI<=5; p5abI++){ P5_AB_FIELDS.push('p5abNama'+p5abI,'p5abFreq'+p5abI,'p5abDosis'+p5abI); }
+for(var p5abI=1; p5abI<=5; p5abI++){ P5_AB_FIELDS.push('p5abNama'+p5abI,'p5abFreq'+p5abI,'p5abDosis'+p5abI,'p5abPer'+p5abI); }
 // Field yang BISA diubah saat membuat laporan baru.
 var P5_NEW_EDIT = ['p5pj','p5pp','p5bed','p5diagnosis','p5laporan'].concat(P5_PPI_FIELDS,P5_AB_FIELDS);
 // Field non-checkbox yang tetap bisa diedit saat memperbarui laporan lama (p5Perbarui).
@@ -279,8 +308,10 @@ function p5ApplyPpiFields(raw){
 }
 
 // Isi 5 slot antibiotik dari string kolom I mentah. Proses ATOMIK per slot
-// (nama+freq+dosis sekaligus dari token slot yang sama) supaya freq/dosis tidak
+// (nama+freq+dosis+per sekaligus dari token slot yang sama) supaya tidak
 // nyasar tertukar antar slot. Slot tanpa token Nama dikosongkan.
+// Per selalu diisi (default '24' bila token tak ada -- termasuk laporan lama
+// sebelum fitur ini ada, backward-compatible tanpa migrasi data).
 function p5ApplyAntibiotik(raw){
  var kv=p5ParseKV(raw);
  for(var i=1;i<=5;i++){
@@ -288,6 +319,7 @@ function p5ApplyAntibiotik(raw){
    document.getElementById('p5abNama'+i).value =nama!==undefined?nama:'';
    document.getElementById('p5abFreq'+i).value =nama!==undefined?(kv['Antibiotik'+i+'Freq']||''):'';
    document.getElementById('p5abDosis'+i).value=nama!==undefined?(kv['Antibiotik'+i+'Berat']||''):'';
+   document.getElementById('p5abPer'+i).value  =kv['Antibiotik'+i+'Per']||'24';
  }
 }
 
@@ -670,6 +702,7 @@ function p5Kumpul(){
    tokens.push('Antibiotik'+abI+'Nama='+p5PpiEsc(abNama));
    tokens.push('Antibiotik'+abI+'Freq='+p5PpiEsc(document.getElementById('p5abFreq'+abI).value));
    tokens.push('Antibiotik'+abI+'Berat='+p5PpiEsc(document.getElementById('p5abDosis'+abI).value));
+   tokens.push('Antibiotik'+abI+'Per='+p5PpiEsc(document.getElementById('p5abPer'+abI).value||'24'));
  }
  ui.alatmedik=tokens.join(';');
  return ui;

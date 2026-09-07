@@ -91,7 +91,7 @@
   .p3-ed-row3 label{display:flex;flex-direction:column;gap:2px;font-size:10px;color:var(--muted)}
   .p3-ed-row3 input{height:28px;padding:0 6px;font-size:11.5px;border:1px solid var(--border);
     border-radius:var(--radius-sm);background:var(--field-active-bg);color:var(--field-active-text)}
-  .p3-ed-ab{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:5px;margin-bottom:5px}
+  .p3-ed-ab{display:grid;grid-template-columns:1.2fr .9fr 1fr .8fr;gap:5px;margin-bottom:5px}
   .p3-ed-ab select,.p3-ed-ab input{height:28px;padding:0 6px;font-size:11px;border:1px solid var(--border);
     border-radius:var(--radius-sm);background:var(--field-active-bg);color:var(--field-active-text)}
 
@@ -341,7 +341,10 @@ function p3AlatViewHtml(rawAlat){
   var abTxt=[];
   for(var i=1;i<=5;i++){
     var ab=d.antibiotik[i];
-    if(ab&&ab.Nama) abTxt.push(ab.Nama+(ab.Freq?' '+ab.Freq+'x':'')+(ab.Berat?' '+ab.Berat:''));
+    // Interval "/Xj" hanya ditampilkan bila BUKAN default 24 jam -- supaya
+    // tampilan tetap bersih utk mayoritas kasus dosis harian biasa.
+    if(ab&&ab.Nama) abTxt.push(ab.Nama+(ab.Freq?' '+ab.Freq+'x':'')+(ab.Berat?' '+ab.Berat:'')
+      +(ab.Per&&ab.Per!=='24'?' /'+ab.Per+'j':''));
   }
   var h='';
   if(alatChips.length) h+='<div class="chips" style="margin-top:3px">'+alatChips.map(function(a){return'<span class="chip">'+esc(a)+'</span>';}).join('')+'</div>';
@@ -383,7 +386,10 @@ function p3ParseAlat(raw){
   var antibiotik={};
   for(var i=1;i<=5;i++){
     if(kv['Antibiotik'+i+'Nama']!==undefined){
-      antibiotik[i]={Nama:kv['Antibiotik'+i+'Nama'],Freq:kv['Antibiotik'+i+'Freq']||'',Berat:kv['Antibiotik'+i+'Berat']||''};
+      // Per: default '24' bila token belum ada (laporan lama sebelum fitur ini
+      // ada) -- backward-compatible tanpa migrasi data, lihat README §2.1.
+      antibiotik[i]={Nama:kv['Antibiotik'+i+'Nama'],Freq:kv['Antibiotik'+i+'Freq']||'',Berat:kv['Antibiotik'+i+'Berat']||'',
+        Per:kv['Antibiotik'+i+'Per']||'24'};
     }
   }
   return {alatIds:alatIds, ppiIds:ppiIds, extra:extra, dpjp14:dpjp14, kv:kv,
@@ -402,6 +408,15 @@ function p3AbOptions(sel){
 function p3AbFreqSelect(id,sel){
   var h='<select id="'+id+'"><option value="">—</option>';
   for(var n=1;n<=10;n++) h+='<option'+(String(n)===String(sel)?' selected':'')+'>'+n+'</option>';
+  return h+'</select>';
+}
+// Interval pemberian ("Per"): nilai tetap 24/36/48/72 jam, hardcode (bukan dari
+// Lookup sheet). Default 24 jam -- lihat README §2.1.
+var P3_AB_PER_OPTS=['24','36','48','72'];
+function p3AbPerSelect(id,sel){
+  sel=sel||'24';
+  var h='<select id="'+id+'">';
+  P3_AB_PER_OPTS.forEach(function(j){ h+='<option value="'+j+'"'+(j===sel?' selected':'')+'>'+j+' jam</option>'; });
   return h+'</select>';
 }
 function p3BuildEditorHtml(nomor,raw){
@@ -430,11 +445,12 @@ function p3BuildEditorHtml(nomor,raw){
     +'</div></div>';
   h+='<div><div class="p3-ed-lbl">Antibiotik</div>';
   for(var i=1;i<=5;i++){
-    var ab=d.antibiotik[i]||{Nama:'',Freq:'',Berat:''};
+    var ab=d.antibiotik[i]||{Nama:'',Freq:'',Berat:'',Per:'24'};
     h+='<div class="p3-ed-ab">'
       +'<select id="'+pre+'abnama'+i+'">'+p3AbOptions(ab.Nama)+'</select>'
       +p3AbFreqSelect(pre+'abfreq'+i, ab.Freq)
       +'<input type="text" id="'+pre+'abdosis'+i+'" placeholder="Teks bebas contoh: 100 mg, 200 mg, 1 gram" value="'+esc(ab.Berat)+'">'
+      +p3AbPerSelect(pre+'abper'+i, ab.Per)
     +'</div>';
   }
   h+='</div>';
@@ -466,6 +482,7 @@ function p3GatherAlatMedik(nomor){
     tokens.push('Antibiotik'+i+'Nama='+p3AbEsc(nama));
     tokens.push('Antibiotik'+i+'Freq='+p3AbEsc(document.getElementById(pre+'abfreq'+i).value));
     tokens.push('Antibiotik'+i+'Berat='+p3AbEsc(document.getElementById(pre+'abdosis'+i).value));
+    tokens.push('Antibiotik'+i+'Per='+p3AbEsc(document.getElementById(pre+'abper'+i).value||'24'));
   }
   return tokens.concat(p3ExtraTokens[nomor]||[]).join(';');
 }

@@ -401,7 +401,10 @@ function p4PpiRowsHtml(d){
   var abTxt=[];
   for(var i=1;i<=5;i++){
     var ab=d.antibiotik[i];
-    if(ab&&ab.Nama) abTxt.push(ab.Nama+(ab.Freq?' '+ab.Freq+'x':'')+(ab.Berat?' '+ab.Berat:''));
+    // Interval "/Xj" hanya ditampilkan bila BUKAN default 24 jam -- sama seperti
+    // p3AlatViewHtml (page3.html), lihat README §2.1.
+    if(ab&&ab.Nama) abTxt.push(ab.Nama+(ab.Freq?' '+ab.Freq+'x':'')+(ab.Berat?' '+ab.Berat:'')
+      +(ab.Per&&ab.Per!=='24'?' /'+ab.Per+'j':''));
   }
   return p4dRow('Suhu', d.kv.Suhu!==undefined?d.kv.Suhu+' °C':'')
     +p4dRow('Kultur', d.kv.HasilKultur!==undefined?d.kv.HasilKultur:'')
